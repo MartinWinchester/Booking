@@ -1,0 +1,4 @@
+/inspectionProfiles/
+.idea/
+Server/__pycache__/
+server_logs.txt
