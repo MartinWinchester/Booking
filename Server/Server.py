@@ -1,11 +1,25 @@
 from flask import Flask, jsonify, json
 from flask_restful import Api, Resource, reqparse
-import Utils as util
+import Utils
 import uuid
+import argparse
 from datetime import datetime
 
 app = Flask(__name__)
 api = Api(app)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--server", default="localhost:8080")
+parser.add_argument("-db", "--database", default="localhost:27020")
+parser.add_argument("-gdb", "--globaldb", default="localhost:27019")
+
+args = parser.parse_args()
+
+OwnUrl = args.server
+DbUrl = args.database
+MapUrl = args.globaldb
+
+DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest = Utils.parse_map_cities_servers(MapUrl)
 
 
 class Book(Resource):
@@ -27,14 +41,12 @@ class Book(Resource):
         parser.add_argument('Destination', required=True)
         # user ID
         parser.add_argument('UID', required=True)
-        # journey ID
-        parser.add_argument('JID', required=True)
         # time of departure
         parser.add_argument('At', required=True)
         args = parser.parse_args()
-
+        jid = uuid.uuid5()
         # todo: successful result should probably have arrival time, trips in journey, JID
-        result = util.try_book(args['Source'], args['Destination'], args['UID'], args['JID'], args['At'],)
+        result = Utils.try_book(args['Source'], args['Destination'], args['UID'], jid, args['At'],)
 
         if result == 0:
             return {'message': "Journey booked successfully."}, 201
@@ -51,7 +63,7 @@ class Book(Resource):
         parser.add_argument('JID', required=True)
         args = parser.parse_args()
 
-        result = util.try_delete(args['UID'], args['JID'])
+        result = Utils.try_delete(args['UID'], args['JID'])
 
         if result == 0:
             return {'message': 'Journey deleted successfully.'}, 204
@@ -63,4 +75,4 @@ class Book(Resource):
 api.add_resource(Book, '/book')
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host=str.split(args.server, ':')[0], port=str.split(args.server, ':')[0])
