@@ -1,0 +1,10 @@
+{
+	"name": "Cork",
+	"Server": "URL:1",
+	"Connections": 
+	[
+		{"City":"Dublin", "time":2, "bandwidth":100}, 
+		{"City":"Limerick", "time":1, "bandwidth":10}
+	]
+}
+
