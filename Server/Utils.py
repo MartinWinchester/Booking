@@ -5,10 +5,10 @@ import numpy as np
 from bidict import bidict
 from datetime import datetime
 
-dummyMapList = '''[{"_id": "Dublin", "Server": "URL:0", "Connections": [{"City":"Cork", "Info":"2, 100"}, {"City":"Belfast", "Info":"3, 100"} ]},
-                {"_id": "Cork", "Server": "URL:1", "Connections": [ {"City":"Dublin", "Info":"2, 100"}, {"City":"Limerick", "Info":"1, 10"} ]},
-                {"_id": "Limerick", "Server": "URL:2", "Connections": [{"City":"Belfast", "Info":"2, 100"}, {"City":"Cork", "Info":"1, 10"} ]},
-                {"_id": "Belfast", "Server": "URL:3", "Connections": [{"City":"Dublin", "Info":"2, 100"}, {"City":"Limerick", "Info":"1, 10"} ]}]'''
+dummyMapList = '''[{"_id": "Dublin", "Server": "URL:0", "Connections": [{"City":"Cork", "Time":"2", "Bandwidth":"100"}, {"City":"Belfast", "Time":"3", "Bandwidth":"100"} ]},
+                {"_id": "Cork", "Server": "URL:1", "Connections": [ {"City":"Dublin", "Time":"2", "Bandwidth":"100"}, {"City":"Limerick", "Time":"1", "Bandwidth":"10"} ]},
+                {"_id": "Limerick", "Server": "URL:2", "Connections": [{"City":"Belfast", "Time":"2", "Bandwidth":"100"}, {"City":"Cork", "Time":"1", "Bandwidth":"10"} ]},
+                {"_id": "Belfast", "Server": "URL:3", "Connections": [{"City":"Dublin", "Time":"2", "Bandwidth":"100"}, {"City":"Limerick", "Time":"1", "Bandwidth":"10"} ]}]'''
 
 
 def find_shortest_path(src, dest, source="Dummy"):
@@ -41,8 +41,8 @@ def parse_map_cities_servers(mapUrl):
         connections = map_json[i]["Connections"]
         for connection in connections:
             targetIndex = cityIndex.inverse[connection["City"]]
-            distanceMatrix[currentIndex, targetIndex] = str.split(connection["Info"], ", ")[0]
-            capacityMatrix[currentIndex, targetIndex] = str.split(connection["Info"], ", ")[1]
+            distanceMatrix[currentIndex, targetIndex] = connection["Time"]
+            capacityMatrix[currentIndex, targetIndex] = connection["Bandwidth"]
     # todo: replace datetime now with fetched 'last updated at'
     return distanceMatrix, capacityMatrix, cityIndex, cityToServerIndex, datetime.now()
 
