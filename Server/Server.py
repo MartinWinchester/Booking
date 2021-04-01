@@ -75,4 +75,4 @@ class Book(Resource):
 api.add_resource(Book, '/book')
 
 if __name__ == '__main__':
-    app.run(host=str.split(args.server, ':')[0], port=str.split(args.server, ':')[0])
+    app.run(host=str.split(args.server, ':')[0], port=str.split(args.server, ':')[1])
