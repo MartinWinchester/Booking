@@ -4,6 +4,7 @@ from flask import json
 import numpy as np
 from bidict import bidict
 from datetime import datetime
+import DataBase
 
 dummyMapList = '''[{"_id": "Dublin", "Server": "URL:0", "Connections": [{"City":"Cork", "Time":"2", "Bandwidth":"100"}, {"City":"Belfast", "Time":"3", "Bandwidth":"100"} ]},
                 {"_id": "Cork", "Server": "URL:1", "Connections": [ {"City":"Dublin", "Time":"2", "Bandwidth":"100"}, {"City":"Limerick", "Time":"1", "Bandwidth":"10"} ]},
