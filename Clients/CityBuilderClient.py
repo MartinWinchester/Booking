@@ -56,7 +56,7 @@ def initilizeMap(nodes,mapName):
 
 # this function initializes a map on MongoDB atlas from scratch
 def initializeMap_online(nodes, mapName):
-	mongo_client = MongoClient("mongodb+srv://cata:distrib@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
+	mongo_client = MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
 	# This command creates a new database on your cluster called GlobalMap.
 	db = mongo_client.Map
 	# This command creates a new collection in your database called Cities.
@@ -68,7 +68,7 @@ def initializeMap_online(nodes, mapName):
 	print(cities_collection.find_one({ "name": "Cork" }))
 
 def mongo_client_online():
-	return MongoClient("mongodb+srv://cata:distrib@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
+	return MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
 
 
 # Args:
