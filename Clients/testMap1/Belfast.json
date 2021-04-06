@@ -1,8 +1,8 @@
 {
 	"name":"Belfast",
-	"Server":"URL:3",
-	"Connections":
+	"server":"URL:3",
+	"connections":
 	[
-		{"City":"Dublin", "time":2, "bandwidth": 100}, 
-		{"City":"Limerick", "time":1, "bandwidth": 10} ]
+		{"name":"Dublin", "time":2, "bandwidth": 100},
+		{"name":"Limerick", "time":1, "bandwidth": 10} ]
 }

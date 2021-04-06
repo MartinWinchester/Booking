@@ -1,9 +1,9 @@
 {
 	"name":"Dublin",
-	"Server":"URL:0",
-	"Connections":
+	"server":"URL:0",
+	"connections":
 	[
-		{"City":"Cork", "time":2,"bandwidth": 100},
-		{"City":"Belfast", "time":3, "bandwidth": 100}
+		{"name":"Cork", "time":2,"bandwidth": 100},
+		{"name":"Belfast", "time":3, "bandwidth": 100}
 	]
 }
