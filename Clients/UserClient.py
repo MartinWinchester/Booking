@@ -4,14 +4,33 @@ import argparse, time, logging
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',filename='cilent_log.txt', level=logging.DEBUG)
 
 
+def isGetResponseValide(re):
+	if 'JID' not in re.keys():
+		return False
+	if 'Source' not in re.keys():
+		return False
+	if 'Destination' not in re.keys():
+		return False
+	if 'From' not in re.keys():
+		return False
+	if 'To' not in re.keys():
+		return False
+	return True
+
 def testGet(url):
 	logging.info("Start testing get request")
 	while True: 
 		try:
 			response = requests.get(url+"/book", params={'UID': 5})
-			print(response.status_code)
-			print(response.encoding)
-			print(response.json())
+			# check response status_code
+			if (response.status_code != 200):
+				logging.debug("get request not succeed")
+				print("get request not succeed")
+			# check validation of reponse json object
+			if !isGetResponseValide(response.json()):
+				logging.debug("GET response not valid")
+				print("GET response not valid")
+
 			time.sleep(2)
 		except Exception as Argument:
 			logging.exception("Connection Refused")
