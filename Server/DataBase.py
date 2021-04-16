@@ -1,24 +1,40 @@
 import json
 import os
+import sys, pymongo
 from pymongo import MongoClient
 import datetime
+import argparse
+from bson import json_util
 
+client = pymongo.MongoClient('127.0.0.1', 27017)
 
+def addTrip(trip):
+	mongo_collection = client['Journey']['Trips']
+	mongo_collection.insert_many(trip)
 
+def getByJourneyID(id):
+	mongo_collection = client['Journey']['Trips']
+	trips = mongo_collection.find({'JourneyID': id})
+	json_docs = []
+	for trip in trips:
+		json_doc = json.dumps(trip, default=json_util.default)
+		json_docs.append(json_doc)
+	return json_docs
 
-jfile = open('secrets.json')
+def getByUUID(id):
+	mongo_collection = client['Journey']['Trips']
+	trips = mongo_collection.find({'UUID': id})
+	json_docs = []
+	for trip in trips:
+		json_doc = json.dumps(trip, default=json_util.default)
+		json_docs.append(json_doc)
+	return json_docs
 
-data = json.load(jfile)
-
-user_nm = data["db_user"]
-user_psswrd = data["db_pass"]
-
-client = MongoClient("mongodb+srv://" + user_nm + ":" + user_psswrd + "@cluster0.gqnq7.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
-
-# This command creates a new database on your cluster called gettingStarted. The variable db points to your new database.
-db = client.gettingStarted
-
-# This command creates a new collection in your gettingStarted database called people. The variable people points to your new collection.
-people = db.people
-
-print(people)
+def getByCityAndTime(city,time):
+	mongo_collection = client['Journey']['Trips']
+	trips = mongo_collection.find({"$and": [{"Source": city}, {"Leave at": time}]})
+	json_docs = []
+	for trip in trips:
+		json_doc = json.dumps(trip, default=json_util.default)
+		json_docs.append(json_doc)
+	return json_docs

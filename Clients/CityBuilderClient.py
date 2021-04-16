@@ -13,7 +13,7 @@ def readCommand( argv ):
 	parser.add_argument('-a','--add',dest='nodeFile',help='Add new node to map from file',
 		metavar=('NODE_FILE',' MAP_NAME'),type=str,nargs=2)
 	parser.add_argument("-d",'--delete',help="delete node from map",type=str)
-	parser.add_argument("-on",'--online',help="Add entries to cluster that is on MongoDB atlas", default = True, type=bool)
+	parser.add_argument("-on",'--online',help="Add entries to cluster that is on MongoDB atlas", default = False, type=bool)
 	args = parser.parse_args()
 
 	if args.initPath:
