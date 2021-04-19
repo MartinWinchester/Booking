@@ -1,20 +1,22 @@
 import requests
 import sys
 import argparse, time, logging
-logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',filename='cilent_log.txt', level=logging.DEBUG)
+import json
+logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',filename='client_log.txt', level=logging.DEBUG)
 
 
-def isGetResponseValide(re):
-	if 'JID' not in re.keys():
-		return False
-	if 'Source' not in re.keys():
-		return False
-	if 'Destination' not in re.keys():
-		return False
-	if 'From' not in re.keys():
-		return False
-	if 'To' not in re.keys():
-		return False
+def isGetResponseInvalid(resp):
+	for re in resp:
+		if 'JID' not in re.keys():
+			return False
+		if 'Source' not in re.keys():
+			return False
+		if 'Destination' not in re.keys():
+			return False
+		if 'From' not in re.keys():
+			return False
+		if 'To' not in re.keys():
+			return False
 	return True
 
 def testGet(url):
@@ -22,12 +24,13 @@ def testGet(url):
 	while True: 
 		try:
 			response = requests.get(url+"/book", params={'UID': 5})
+			tmp_str = response.text.replace("\\", "")[1:-2]
 			# check response status_code
 			if (response.status_code != 200):
 				logging.debug("get request not succeed")
 				print("get request not succeed")
 			# check validation of reponse json object
-			if !isGetResponseValide(response.json()):
+			if ~isGetResponseInvalid(json.loads(tmp_str)):
 				logging.debug("GET response not valid")
 				print("GET response not valid")
 

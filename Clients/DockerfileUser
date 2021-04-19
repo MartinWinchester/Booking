@@ -1,0 +1,9 @@
+FROM python:3.7.4-slim-buster
+
+WORKDIR /User
+
+COPY UserClient.py ./UserClient.py
+# COPY secrets.json secrets.json
+RUN pip3 install requests
+RUN pip3 install argparse
+CMD [ "python", "UserClient.py" , "-s", "http://localhost:8080", "-t", "get"]
