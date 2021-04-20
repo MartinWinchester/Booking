@@ -3,6 +3,7 @@ from flask_restful import Api, Resource, reqparse
 import Utils
 import uuid
 import argparse
+import DataBase
 from datetime import datetime
 
 app = Flask(__name__)
@@ -23,7 +24,7 @@ DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest = Utils.parse_map_c
 
 
 class Book(Resource):
-    def get(self):
+    def fuckintemp(self):
         # fetch users bookings
         parser = reqparse.RequestParser()
         parser.add_argument('UID', required=True)
@@ -34,6 +35,17 @@ class Book(Resource):
             {'JID': 1, 'Source': "1", 'Destination': "2", "From": datetime(2021, 1, 1, 13, 4), "To": datetime(2021, 1, 1, 14, 4)}]
         resp = json.dumps(bookings)
         return resp, 200
+
+    def get(self):
+        # fetch users bookings
+        parser = reqparse.RequestParser()
+        parser.add_argument('UID', required=True)
+        args = parser.parse_args()
+        # find all bookings for given UID
+        uid = args['UID']
+        db = DataBase()
+        result = json.dumps(db.getByUUID(uid))
+        return result, 200
 
     def post(self):
         parser = reqparse.RequestParser()
