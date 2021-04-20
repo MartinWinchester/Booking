@@ -101,7 +101,6 @@ def addToMap(mongo_client, city, server, incoming, outgoing):
 			# This is duplicating informatioN!!!
 			object_outgoing = json_object(city, server, node["connections"], outgoing)
 
-		# ToDO: do a distributed transaction!
 		if not to_update:
 			cities_collection.insert_one(object_outgoing)
 		else:
@@ -133,15 +132,23 @@ def json_object(city, server, existing, outcoming):
 	print(json_dump)
 	return json.loads(json_dump)
 
+def callback(session):
+	addToMap(mongo_client, "Cluj","URL:5",{"Limerick":(2,5)}, {})
+
+mongo_client = mongo_client_online()
 
 if __name__ == '__main__':
 	#args = readCommand( sys.argv[1:] ) # Get game components based on input
 	#"Cork":(2,5), "Dublin":(3,10)
-	mongo_client = mongo_client_online()
-	addToMap(mongo_client, "Cluj","URL:5",{"Limerick":(2,5)}, {})
+	# Step 2: Start a client session.
+	# At any given time, you can have at most one open transaction for a session.
+	with mongo_client.start_session() as session:
+	    # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
+		session.with_transaction(callback)
+
 	db = mongo_client.Map
 	cities_collection = db.Cities
-	node = cities_collection.find_one({ "name":"Cluj" })
+	node = cities_collection.find_one({ "name":"Sibiu" })
 	print(node)
 	node = cities_collection.find_one({ "name":"Limerick" })
 	print(node)
