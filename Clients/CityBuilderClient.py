@@ -4,6 +4,12 @@ import os
 import sys, pymongo
 from pymongo import MongoClient
 
+def mongo_client_online():
+	return MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
+
+def mongo_client_local():
+ 	return pymongo.MongoClient('127.0.0.1', 27017)
+
 def readCommand( argv ):
 	import argparse
 	parser = argparse.ArgumentParser(description="your script description")
@@ -29,9 +35,10 @@ def readCommand( argv ):
 					data = json.load(f)
 				nodes.append(data)
 		if args.online == True:
-			initializeMap_online(nodes,mapName)
+			initializeMap_online(mongo_client_online(),mapName)
 		else:
-			initilizeMap(nodes,mapName)
+			initilizeMap(mongo_client_local(),nodes, mapName)
+
 	if args.nodeFile:
 		with open(args.nodeFile[0]) as f:
 			data = json.load(f)
@@ -39,14 +46,12 @@ def readCommand( argv ):
 	if args.delete:
 		print("delete a node")
 
-# TODO: Change this function so that it checks if the city is already in the database, it only modifies the Connections.
 def addNode(node,mapName):
 	mongo_client = pymongo.MongoClient('127.0.0.1', 27017)
 	mongo_collection = mongo_client['map'][mapName]
 	mongo_collection.insert_one(node)
 
-def initilizeMap(nodes,mapName):
-	mongo_client = pymongo.MongoClient('127.0.0.1', 27017)
+def initilizeMap(mongo_client,nodes,mapName):
 	if "map" not in mongo_client.list_database_names():
 		print("Database not exist")
 	mydb = mongo_client['map']
@@ -54,9 +59,10 @@ def initilizeMap(nodes,mapName):
 	mongo_collection.delete_many({})
 	mongo_collection.insert_many(nodes)
 
-# this function initializes a map on MongoDB atlas from scratch
-def initializeMap_online(nodes, mapName):
-	mongo_client = MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
+# mongo_client to use, whether online or local
+# nodes - cities to be added
+# mapName - name of the database containing the mapName
+def initializeMap(mongo_client, nodes, mapName):
 	# This command creates a new database on your cluster called GlobalMap.
 	db = mongo_client.Map
 	# This command creates a new collection in your database called Cities.
@@ -66,9 +72,6 @@ def initializeMap_online(nodes, mapName):
 	cities_collection.delete_many({})
 	cities_collection.insert_many(nodes)
 	print(cities_collection.find_one({ "name": "Cork" }))
-
-def mongo_client_online():
-	return MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
 
 
 # Args:
