@@ -6,3 +6,12 @@ There are 2 versions of MongoDB that you can use. Either MongoDB atlas or MongoD
 
 
 ## Creating the Map
+There are 2 scenarios when creating the map:
+* Creating the map from scratch with no nodes available
+* Expanding the map with new cities and roads
+
+
+When you want to create a simple map from scratch, this can be done using JSON files. MongoDB uses documents, so the entire JSON files are added to the database.
+-- add command here --
+
+Should you want to expand this map, there's a function called addToMap that can be used! Currently this cannot be run from command line.
