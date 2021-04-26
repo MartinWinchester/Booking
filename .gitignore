@@ -2,11 +2,4 @@
 .idea/
 Server/__pycache__/
 server_logs.txt
-secerts.json
-/secerts.json
-./secerts.json
-../secerts.json
-*/secerts.json
-*/*secerts.json
-secrets.json
 secrets.json
