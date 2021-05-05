@@ -14,7 +14,7 @@ arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("-s", "--server", default="localhost:8080")
 arg_parser.add_argument("-db", "--database", default="localhost:27020")
 arg_parser.add_argument("-dbr", "--database_replicas", default=2)
-arg_parser.add_argument("-gdb", "--globaldb", default="localhost:37019")
+arg_parser.add_argument("-gdb", "--globaldb", default="localhost:27019")
 arg_parser.add_argument("-gdbr", "--global_database_replicas", default=2)
 arg_parser.add_argument("-i", "--serverid", default="0")
 args = arg_parser.parse_args()
@@ -25,16 +25,20 @@ OwnUrl = args.server
 DbUrl = args.database
 MapUrl = args.globaldb
 ServerId = int(args.serverid)
-PortBaseServer = 8080
-PortBaseTripDb = 27020
+# PortBaseServer = 8080
+# PortBaseTripDb = 27020
 PortJourneyDb = str.split(args.globaldb, ':')[1]
-PortServer = PortBaseServer + ServerId
-PortTripDb = PortBaseTripDb + ServerId
+# PortServer = PortBaseServer + ServerId
+# PortTripDb = PortBaseTripDb + ServerId
+PortServer = int(str.split(args.server, ':')[1]) 
+PortTripDb = int(str.split(args.database, ':')[1]) 
+
+
 TransLogFile = "../TransactionLogs/transaction_logs_" + str(ServerId) + ".txt"
 TripReps = [(str.split(args.database, ':')[0], int(str.split(args.database, ':')[1]) + index) for index in
-            range(int(args.database_replicas)+1)]
+            range(int(args.database_replicas)+10)]
 JourneyReps = [(str.split(args.globaldb, ':')[0], int(str.split(args.globaldb, ':')[1]) + index) for index in
-               range(int(args.global_database_replicas)+1)]
+               range(int(args.global_database_replicas)+10)]
 # todo fetch map first, pass to map parser
 Util = Utils.Util()
 Util.port = PortServer
