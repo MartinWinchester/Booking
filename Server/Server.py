@@ -97,21 +97,25 @@ class Book(Resource):
             # don't necessarily need to make sure all followers notified, worst case followers timeout
             while failed:
                 resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "abort")
-                failed = [response for response in resps if response[4].status != 200]
+                failed = [response for response in resps if response[4].status_code != 200]
             # Journey denied because link is at capacity
             return {'message': "Journey denied."}, 503
 
         # so far so good
-        failed = [res for res in prepared_resps if res[4].status != 200]
+        failed = [res for res in prepared_resps if res[4].status_code != 200]
         if failed:
+            wait_timer = 0.0001
             # at least 1 server could not book
             # send all followers "abort" message
             while failed:
+                # not really necessary
+                time.sleep(wait_timer)
                 resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "prepared")
                 if [response for response in prepared_resps if response[4].text == "Link at capacity"]:
                     # Journey denied because link is at capacity
                     return {'message': "Journey denied."}, 503
-                failed = [response for response in resps if response[4].status != 200]
+                wait_timer += 1
+                failed = [response for response in resps if response[4].status_code != 200]
 
         # by the time we're here no aborts
         # todo log commit
@@ -122,7 +126,7 @@ class Book(Resource):
         while failed:
             # send all followers "commit" message
             resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "commit")
-            failed = [response for response in resps if response[4].status != 200]
+            failed = [response for response in resps if response[4].status_code != 200]
 
         # todo log complete
         return {'message': "Journey booked successfully."}, 201
@@ -175,25 +179,33 @@ class Transaction(Resource):
         # no need for follower log file, but it helps when restarting if leader logged commit but new booking request
         # comes in before leader retransmit
 
-        # todo if status is prepared
         if transaction_status == "prepared":
             # todo actually check for timeouts
             timeout_start = time.perf_counter()
             for trip in trips:
+                # todo read lock DB
                 # todo check if links at capacity
-                db.getByCityAndTime(trip[0], trip[3])
-            # return message
+                load = db.getByCityAndTime(trip[0], trip[3])["Capacity"]
+                # after or: Jid was used before, retry transaction
+                if jid not in db.getByCityAndTime(trip[0], trip[3])["JID"]:
+                    return {'message': 'Retry'}, 400
+                if load >= CapacityMap[Util.Cities.inverse[trip[0]], Util.Cities.inverse[trip[1]]]:
+                    # todo write lock DB
+                    return {'message': 'Link at capacity'}, 400
+            return {'message': 'Ok'}, 200
 
-        # todo if status is commit
-        # update trips DB
-        # return message
+        elif transaction_status == "commit":
+            # todo trip with supplied jid had already been added to DB
+            if jid not in db.getByCityAndTime(trip[0], trip[3])["JID"]:
+                for trip in trips:
+                    DB.addTrip(trip)
+            return {'message': 'Ok'}, 200
 
-        # todo if status is abort
-        # return message
-
-        # check if JID already in Trips DB
-        return {'message': 'Journey deleted successfully.'}, 204
-        return result
+        elif transaction_status == "abort":
+            return {'message': 'Ok'}, 200
+            # todo release DB lock
+        else:
+            return {'message': 'transaction_status should be one of prepared, commit or abort'}, 400
 
 
 api.add_resource(Book, '/book')
