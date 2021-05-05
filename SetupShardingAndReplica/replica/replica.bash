@@ -43,6 +43,11 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 		  { _id: 2, host: "127.0.0.1:27003" }
 	   ]
 	})
+	cfg = rs.conf()
+	cfg.members[0].priority = 2
+	cfg.members[1].priority = 1
+	cfg.members[2].priority = 1
+	rs.reconfig(cfg)
 EOF
 
 	mongo -port 27002 <<EOF
