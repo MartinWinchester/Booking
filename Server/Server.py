@@ -4,6 +4,7 @@ import Utils
 import uuid
 import argparse
 from DataBase import DB
+import datetime
 from dateutil import parser as datetimeparser
 import time
 
@@ -71,6 +72,8 @@ class Book(Resource):
         parser.add_argument('At', location='form')
         args = parser.parse_args()
 
+        journey = dict()
+        # can put all states into 1 big nested loop, might need for failover
         jid = str(uuid.uuid4())
         # todo check that Source, Destination in Map
         cities = Util.find_shortest_path(args['Source'], args['Destination'])
@@ -82,15 +85,14 @@ class Book(Resource):
             cities = Util.find_shortest_path(args['Source'], args['Destination'])
         city_contacts = [(CitiesToServers[city[0]], city[0], city[1], city[2]) for city in cities]
         own_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] in OwnCities]
-        city_contacts = [city_tuple for city_tuple in city_contacts if city_tuple[1] not in OwnCities]
-        # todo Log "prepared" to log file with JID, city_contacts
+        follower_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] not in OwnCities]
+        # todo Log "prepared" to log file with JID, follower_trips
         start_time = datetimeparser.parse(args['At'], fuzzy_with_tokens=True)
         # todo actually check for timeouts
         timeout_start = time.perf_counter()
 
-        prepared_resps = []
         # send all followers "prepared" message
-        prepared_resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "prepared")
+        prepared_resps = Util.leader_transaction_message(follower_trips, start_time, jid, "book", "prepared")
 
         failed = [response for response in prepared_resps if response[4].text == "Link at capacity"]
         if failed:
@@ -98,7 +100,7 @@ class Book(Resource):
             # send all followers "abort" message
             # don't necessarily need to make sure all followers notified, worst case followers timeout
             while failed:
-                resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "abort")
+                resps = Util.leader_transaction_message(follower_trips, start_time, jid, "book", "abort")
                 failed = [response for response in resps if response[4].status_code != 200]
             # Journey denied because link is at capacity
             return {'message': "Journey denied."}, 503
@@ -112,7 +114,7 @@ class Book(Resource):
             while failed:
                 # not really necessary
                 time.sleep(wait_timer)
-                resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", "prepared")
+                resps = Util.leader_transaction_message(follower_trips, start_time, jid, "book", "prepared")
                 if [response for response in prepared_resps if response[4].text == "Link at capacity"]:
                     # Journey denied because link is at capacity
                     return {'message': "Journey denied."}, 503
@@ -121,9 +123,17 @@ class Book(Resource):
 
         # by the time we're here no aborts
         # todo log commit
-        # todo insert into journeys
+        journey["JID"] = jid
+        journey["Trips"] = city_contacts
+        journey["Cities"] = cities
+        journey["StartTime"] = start_time[0].strftime("%m/%d/%Y, %H:%M:%S")
+        journey["Times"] = [start_time[0].strftime("%m/%d/%Y, %H:%M:%S")] + \
+                           [(start_time[0] + datetime.timedelta(hours=t)).strftime("%m/%d/%Y, %H:%M:%S")
+                            for (_, _, _, t) in city_contacts]
 
-        # todo commit own_trips
+        Util.book_transaction(jid, own_trips, "commit", db)
+        db.addJourney(args['UID'], journey)
+
         failed = city_contacts
         while failed:
             # send all followers "commit" message
@@ -173,41 +183,8 @@ class Transaction(Resource):
         transaction_type = args['Type']
         transaction_status = args['Status']
         trips = json.loads(args['Trips'])
-        if trips is not None:
-            for trip in trips:
-                if trip["From"] not in OwnCities:
-                    return {'message': 'City moved'}, 400
-
-        # no need for follower log file, but it helps when restarting if leader logged commit but new booking request
-        # comes in before leader retransmit
-
-        if transaction_status == "prepared":
-            # todo actually check for timeouts
-            timeout_start = time.perf_counter()
-            for trip in trips:
-                # todo read lock DB
-                # todo check if links at capacity
-                load = db.getByCityAndTime(trip[0], trip[3])["Capacity"]
-                # after or: Jid was used before, retry transaction
-                if jid not in db.getByCityAndTime(trip[0], trip[3])["JID"]:
-                    return {'message': 'Retry'}, 400
-                if load >= CapacityMap[Util.Cities.inverse[trip[0]], Util.Cities.inverse[trip[1]]]:
-                    # todo write lock DB
-                    return {'message': 'Link at capacity'}, 400
-            return {'message': 'Ok'}, 200
-
-        elif transaction_status == "commit":
-            # todo trip with supplied jid had already been added to DB
-            if jid not in db.getByCityAndTime(trip[0], trip[3])["JID"]:
-                for trip in trips:
-                    DB.addTrip(trip)
-            return {'message': 'Ok'}, 200
-
-        elif transaction_status == "abort":
-            return {'message': 'Ok'}, 200
-            # todo release DB lock
-        else:
-            return {'message': 'transaction_status should be one of prepared, commit or abort'}, 400
+        if transaction_type == "book":
+            return Util.book_transaction(jid, trips, transaction_status, db)
 
 
 api.add_resource(Book, '/book')

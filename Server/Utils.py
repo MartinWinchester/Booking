@@ -5,6 +5,7 @@ import numpy as np
 from bidict import bidict
 import datetime
 import requests
+import time
 from DataBase import DB
 
 dummyMapList = '''[{"_id": "Dublin", "Server": "localhost:8080", "Connections": [{"City":"Cork", "Time":"2", "Bandwidth":"100"}, {"City":"Belfast", "Time":"3", "Bandwidth":"100"} ]},
@@ -100,6 +101,54 @@ class Util:
         if not self.valid_trip(uid, time):
             return 1
         return 0
+
+    def book_transaction(self, jid, trips, transaction_status, db):
+        mapp = None
+        self.parse_map_cities_servers(mapp)
+        if trips is not None:
+            for trip in trips:
+                if trip["From"] not in self.OwnCities:
+                    return {'message': 'City moved'}, 400
+
+        # no need for follower log file, but it helps when restarting if leader logged commit but new booking request
+        # comes in before leader retransmit
+
+        if transaction_status == "prepared":
+            # todo actually check for timeouts
+            timeout_start = time.perf_counter()
+            for trip in trips:
+                db.trip_r_acquire(jid)
+                # todo check if links at capacity
+                load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+                # after or: Jid was used before, retry transaction
+                if jid not in db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["JID"]:
+                    db.trip_r_release(jid)
+                    return {'message': 'Retry'}, 400
+                if load >= self.CapacityMap[self.Cities.inverse[trip["From"]], self.Cities.inverse[trip["To"]]]:
+                    db.trip_r_release(jid)
+                    return {'message': 'Link at capacity'}, 400
+            db.trip_w_acquire(jid)
+            load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+            if load >= self.CapacityMap[self.self.inverse[trip["From"]], self.Cities.inverse[trip[1]]]:
+                db.trip_w_release(jid)
+                return {'message': 'Link at capacity'}, 400
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "commit":
+            if jid not in db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["JID"]:
+                for trip in trips:
+                    trp = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])
+                    trp["Capacity"] = trp["Capacity"] + 1
+                    trp["JID"] = trp["JID"] + [jid]
+                    DB.addTrip(trp)
+            db.trip_w_release(jid)
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "abort":
+            db.trip_w_release(jid)
+            return {'message': 'Ok'}, 200
+        else:
+            return {'message': 'transaction_status should be one of prepared, commit or abort'}, 400
 
     def try_delete(self, uid, jid):
         # delete whole journey if deleted return 0, if no journey with id = jid return 1, if denied return 2

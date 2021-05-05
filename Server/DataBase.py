@@ -6,7 +6,8 @@ from pymongo import MongoClient
 import datetime
 import argparse
 from bson import json_util
-
+import time
+from readerwriterlock import rwlock
 
 class DB:
 	# todo AddJourney, GetTripsByUUID
@@ -17,7 +18,8 @@ class DB:
 		# alts: list of forwarding info to replicas
 		self.trip_alts = trip_alts
 		self.journey_alts = journey_alts
-		# todo make these client RWlock-able
+		self.trip_lock_r = None
+		self.trip_lock_w = None
 		self.trips_client = MongoClient(trip_host, trip_port)
 		self.journeys_client = MongoClient(journey_host, journey_port)
 
@@ -52,3 +54,42 @@ class DB:
 			json_doc = json.dumps(trip, default=json_util.default)
 			json_docs.append(json_doc)
 		return json_docs
+	
+	def trip_r_acquire(self, jid):
+		while 1:
+			try:
+				if jid in self.trip_lock_r:
+					return
+			except:
+				print()
+			if self.trip_lock_w is None:
+				if self.trip_lock_r is None:
+					self.trip_lock_r = [jid]
+				else:
+					self.trip_lock_r.append(jid)
+				return
+			time.sleep(1)
+	
+	def trip_w_acquire(self, jid):
+		while 1:
+			if self.trip_lock_w == jid:
+				return 1
+			if self.trip_lock_w is None and self.trip_lock_r is None:
+				self.trip_lock_w = jid
+				return 0
+			time.sleep(1)
+	
+	def trip_r_release(self, jid):
+		try:
+			self.trip_lock_r.remove(jid)
+		except:
+			return
+	
+	def trip_w_release(self, jid):
+		if self.trip_lock_w == jid:
+			self.trip_lock_w = None
+		try:
+			self.trip_lock_r.remove(jid)
+			return 0
+		except:
+			return 1
