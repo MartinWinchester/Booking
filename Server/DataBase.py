@@ -25,9 +25,17 @@ class DB:
 		mongo_collection = self.trips_client['Trips']['Trips']
 		mongo_collection.insert_many(trip)
 
-	def addJourney(self, journey):
+	def deleteJourney(self, uid ,jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		mongo_collection.insert_many(journey)
+		mongo_collection.update_one({'UUID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
+
+	def addJourney(self, uid ,journey):
+		mongo_collection = self.journeys_client['Journey']['Journey']
+		updated = mongo_collection.update_one({'UUID': uid}, {'$push': {'Journeys': journey}})
+		if updated.matched_count == 0:
+			data = {"UUID":uid,"Journeys":[journey]}
+			mongo_collection.insert_one(data)
+
 
 	def getByJourneyID(self, jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
