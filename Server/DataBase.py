@@ -47,25 +47,6 @@ class DB:
 			json_docs.append(json_doc)
 		return json_docs
 
-	def getTripsByUUID(self, uid):
-		mongo_collection = self.trips_client['Trips']['Trips']
-		trips = mongo_collection.find({'UUID': uid})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
-
-	def getByCityAndTime(self, city, time):
-		# todo if this is in the Trips DB, we identify a link by source AND destination
-		mongo_collection = self.trips['Journey']['Trips']
-		trips = mongo_collection.find({"$and": [{"Source": city}, {"Leave at": time}]})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
-
 	def getTripsByLinkAndTime(self, source, destination, time):
 		mongo_collection = self.trips_client['Trips']['Trips']
 		trips = mongo_collection.find({"$and": [{"Source": source}, {"Destination":destination}, {"Leave at": time}]})
