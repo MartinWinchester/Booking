@@ -10,7 +10,7 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	dbpath = $(pwd)/data/rs1  
 	journal=true                                             
 	port=2702$1                                               
-	replSet=rs                                               
+	replSet=trip$1                                               
 	logappend=true                                           
 	fork = true " > conf/rs1/rs1.cfg
 
@@ -18,7 +18,7 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	dbpath=$(pwd)/data/rs2 
 	journal=true                                             
 	port=2703$1                                               
-	replSet=rs                           
+	replSet=trip$1                     
 	logappend=true                                           
 	fork = true " > conf/rs2/rs2.cfg
 
@@ -26,7 +26,7 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	dbpath=$(pwd)/data/rs3  
 	journal=true                                             
 	port=2704$1                                              
-	replSet=rs                                               
+	replSet=trip$1                                               
 	logappend=true                                           
 	fork = true " > conf/rs3/rs3.cfg
 
@@ -35,7 +35,7 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	mongod -f conf/rs3/rs3.cfg
 	mongo -port 2702$1 << EOF
 	rs.initiate( {
-	   _id : "rs",
+	   _id : "trip$1",
 	   members: [
 		  { _id: 0, host: "127.0.0.1:2702$1" },
 		  { _id: 1, host: "127.0.0.1:2703$1" },
@@ -63,27 +63,27 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 	dbpath=$base/data/rs1  
 	journal=true                                             
 	port=2702$1                                               
-	replSet=rs                                               
+	replSet=trip$1                                               
 	logappend=true" > conf/rs1/rs1.cfg
 
 	echo "logpath=$base/log/rs2.log
 	dbpath=$base/data/rs2 
 	journal=true                                             
 	port=2703$1                                               
-	replSet=rs                           
+	replSet=trip$1                           
 	logappend=true" > conf/rs2/rs2.cfg
 
 	echo "logpath=$base/log/rs3.log
 	dbpath=$base/data/rs3  
 	journal=true                                             
 	port=2704$1                                              
-	replSet=rs                                               
+	replSet=trip$1                                               
 	logappend=true" > conf/rs3/rs3.cfg
 
 	start mongod -f conf/rs1/rs1.cfg
 	mongo -port 2702$1 & << EOF
 	rs.initiate( {
-	   _id : "rs",
+	   _id : "trip$1",
 	   members: [
 		  { _id: 0, host: "127.0.0.1:2702$1" },
 		  { _id: 1, host: "127.0.0.1:2703$1" },
