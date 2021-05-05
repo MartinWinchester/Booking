@@ -3,3 +3,7 @@
 Server/__pycache__/
 server_logs.txt
 secrets.json
+SetupShardingAndReplica/replica/*
+SetupShardingAndReplica/sharding/*
+log/*
+conf/*
