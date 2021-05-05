@@ -22,11 +22,15 @@ class DB:
 		self.journeys_client = MongoClient(journey_host, journey_port)
 
 	def addTrip(self, trip):
-		mongo_collection = self.trips_client['Journey']['Trips']
+		mongo_collection = self.trips_client['Trips']['Trips']
 		mongo_collection.insert_many(trip)
 
+	def addJourney(self, journey):
+		mongo_collection = self.journeys_client['Journey']['Journey']
+		mongo_collection.insert_many(journey)
+
 	def getByJourneyID(self, jid):
-		mongo_collection = self.journeys_client['Journey']['Trips']
+		mongo_collection = self.journeys_client['Journey']['Journey']
 		trips = mongo_collection.find({'JourneyID': jid})
 		json_docs = []
 		for trip in trips:
@@ -35,7 +39,16 @@ class DB:
 		return json_docs
 
 	def getByUUID(self, uid):
-		mongo_collection = self.journeys_client['Journey']['Trips']
+		mongo_collection = self.journeys_client['Journey']['Journey']
+		trips = mongo_collection.find({'UUID': uid})
+		json_docs = []
+		for trip in trips:
+			json_doc = json.dumps(trip, default=json_util.default)
+			json_docs.append(json_doc)
+		return json_docs
+
+	def getTripsByUUID(self, uid):
+		mongo_collection = self.trips_client['Trips']['Trips']
 		trips = mongo_collection.find({'UUID': uid})
 		json_docs = []
 		for trip in trips:
@@ -47,6 +60,15 @@ class DB:
 		# todo if this is in the Trips DB, we identify a link by source AND destination
 		mongo_collection = self.trips['Journey']['Trips']
 		trips = mongo_collection.find({"$and": [{"Source": city}, {"Leave at": time}]})
+		json_docs = []
+		for trip in trips:
+			json_doc = json.dumps(trip, default=json_util.default)
+			json_docs.append(json_doc)
+		return json_docs
+
+	def getTripsByLinkAndTime(self, source, destination, time):
+		mongo_collection = self.trips_client['Trips']['Trips']
+		trips = mongo_collection.find({"$and": [{"Source": source}, {"Destination":destination}, {"Leave at": time}]})
 		json_docs = []
 		for trip in trips:
 			json_doc = json.dumps(trip, default=json_util.default)
