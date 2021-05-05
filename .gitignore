@@ -7,3 +7,4 @@ SetupShardingAndReplica/replica/*
 SetupShardingAndReplica/sharding/*
 log/*
 conf/*
+**/transaction_logs_*.txt
