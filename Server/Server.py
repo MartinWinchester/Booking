@@ -7,6 +7,8 @@ from DataBase import DB
 from dateutil import parser as datetimeparser
 import time
 
+from Map import Map
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -213,7 +215,9 @@ class Transaction(Resource):
 
 
 api.add_resource(Book, '/book')
+api.add_resource(Map, '/map')
 api.add_resource(Transaction, '/transaction')
+
 
 if __name__ == '__main__':
     for cit in CitiesToServers:
