@@ -6,6 +6,7 @@ import argparse
 import DataBase
 from datetime import datetime
 
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -83,6 +84,7 @@ class Book(Resource):
 
 
 api.add_resource(Book, '/book')
+
 
 if __name__ == '__main__':
     for city in CitiesToServers:
