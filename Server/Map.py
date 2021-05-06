@@ -47,6 +47,7 @@ class Map(Resource):
         port = int(args['Port'])
 
         mongo_client = pymongo.MongoClient(args['Host'], port)
+        # mongo_client = pymongo.MongoClient(args['Host'], replicaSet = args['ReplicaSetName'])
 
         # This command creates a new database.
         databaseName = args['DatabaseName']
@@ -78,7 +79,7 @@ class Map(Resource):
 
         # This command creates a new database.
         databaseName = args['DatabaseName']
-        db = mongo_client.databaseName
+        db = mongo_client[databaseName]
     	# This command creates a new collection in your database called Cities.
         cities_collection = db.Cities
         data = parse_json(cities_collection.find_one({ "name": args['City']}))

@@ -1,0 +1,8 @@
+{
+	"name":"Belfast",
+	"server":"localhost:8080",
+	"connections":
+	[
+		{"name":"Dublin", "time":2, "bandwidth": 100},
+		{"name":"Limerick", "time":1, "bandwidth": 10} ]
+}
