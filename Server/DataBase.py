@@ -66,7 +66,7 @@ class DB:
 			json_doc = json.dumps(trip, default=json_util.default)
 			json_docs.append(json_doc)
 		return json_docs
-	
+
 	def trip_r_acquire(self, jid):
 		while 1:
 			try:
@@ -81,7 +81,7 @@ class DB:
 					self.trip_lock_r.append(jid)
 				return
 			time.sleep(1)
-	
+
 	def trip_w_acquire(self, jid):
 		while 1:
 			if self.trip_lock_w == jid:
@@ -90,13 +90,13 @@ class DB:
 				self.trip_lock_w = jid
 				return 0
 			time.sleep(1)
-	
+
 	def trip_r_release(self, jid):
 		try:
 			self.trip_lock_r.remove(jid)
 		except:
 			return
-	
+
 	def trip_w_release(self, jid):
 		if self.trip_lock_w == jid:
 			self.trip_lock_w = None
@@ -115,5 +115,5 @@ class DB:
 		# This command creates a new collection in your database called Cities.
 		cities_collection = db.Cities
 		data = cities_collection.find()
-		print(data)
-		return json.dumps(data)
+		json_docs = [json.dumps(doc, default=json_util.default) for doc in data]
+		return json_docs

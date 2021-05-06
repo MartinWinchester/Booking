@@ -3,7 +3,6 @@ import json
 import os
 import sys, pymongo
 import ast
-sys.path.append('../Clients')
 from bson import json_util
 import json
 from flask import Flask, jsonify, json
@@ -27,7 +26,7 @@ class Map(Resource):
 
         # Host and Port of mongo_client to be used for this Database.
         parser.add_argument('Host', required=True)
-        parser.add_argument('ReplicaSetName', required=True)
+        parser.add_argument('Port', required=True)
 
         args = parser.parse_args()
 

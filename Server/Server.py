@@ -22,7 +22,7 @@ arg_parser.add_argument("-dbr", "--database_replicas", default=2)
 arg_parser.add_argument("-gdb", "--globaldb", default="localhost:27119")
 arg_parser.add_argument("-gdbr", "--global_database_replicas", default=2)
 
-arg_parser.add_argument("-mdb", "--mapdb", default="localhost:27001")
+arg_parser.add_argument("-mdb", "--mapdb", default="localhost:27017")
 arg_parser.add_argument("-mdbr", "--map_database_replicas", default=2)
 
 arg_parser.add_argument("-i", "--serverid", default="0")
@@ -39,8 +39,8 @@ ServerId = int(args.serverid)
 PortJourneyDb = str.split(args.globaldb, ':')[1]
 # PortServer = PortBaseServer + ServerId
 # PortTripDb = PortBaseTripDb + ServerId
-PortServer = int(str.split(args.server, ':')[1]) 
-PortTripDb = int(str.split(args.database, ':')[1]) 
+PortServer = int(str.split(args.server, ':')[1])
+PortTripDb = int(str.split(args.database, ':')[1])
 PortMapDb = int(str.split(args.mapdb, ':')[1])
 
 
@@ -55,7 +55,7 @@ JourneyReps = [(str.split(args.globaldb, ':')[0], int(str.split(args.globaldb, '
 Util = Utils.Util(ServerId)
 Util.port = PortServer
 
-db = DB(str.split(args.server, ':')[0], PortTripDb, 
+db = DB(str.split(args.server, ':')[0], PortTripDb,
     str.split(args.globaldb, ':')[0],int(str.split(args.globaldb, ':')[1]),
     str.split(args.mapdb, ':')[0],int(str.split(args.mapdb, ':')[1]),
      TripReps, JourneyReps)

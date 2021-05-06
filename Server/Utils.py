@@ -49,21 +49,27 @@ class Util:
         if map is None:
             map_json = json.loads(dummyMapList)
         else:
-            map_json = json.loads(map)
+            map_json = [json.loads(doc) for doc in map]
+
         cityIndex = bidict({})
         cityToServerIndex = {}
-        for i in range(len(map_json)):
-            cityIndex[i] = map_json[i]["_id"]
-            cityToServerIndex[map_json[i]["_id"]] = map_json[i]["Server"]
+
+        i = 0
+        for m  in map_json:
+            cityIndex[i] = m['name']
+            cityToServerIndex[m["name"]] = m["server"]
+            i+=1
+
         distanceMatrix = sparse.csr_matrix(np.zeros((len(cityIndex), len(cityIndex))))
         capacityMatrix = sparse.csr_matrix(np.zeros((len(cityIndex), len(cityIndex))))
-        for i in range(len(map_json)):
-            currentIndex = cityIndex.inverse[map_json[i]["_id"]]
-            connections = map_json[i]["Connections"]
+
+        for m in map_json:
+            currentIndex = cityIndex.inverse[m["name"]]
+            connections = m["connections"]
             for connection in connections:
-                targetIndex = cityIndex.inverse[connection["City"]]
-                distanceMatrix[currentIndex, targetIndex] = connection["Time"]
-                capacityMatrix[currentIndex, targetIndex] = connection["Bandwidth"]
+                targetIndex = cityIndex.inverse[connection["name"]]
+                distanceMatrix[currentIndex, targetIndex] = connection["time"]
+                capacityMatrix[currentIndex, targetIndex] = connection["bandwidth"]
         # todo: replace datetime now with fetched 'last updated at'
         self.DistanceMap = distanceMatrix
         self.CapacityMap = capacityMatrix
@@ -76,6 +82,8 @@ class Util:
         # todo: replace datetime now with fetched 'last updated at'
         self.MapLatest = datetime.datetime.now()
         self.OwnCities = OwnCities
+
+        print(distanceMatrix)
         return distanceMatrix, capacityMatrix, cityIndex, cityToServerIndex, datetime.datetime.now(), OwnCities
 
     def find_db_bookings(self):

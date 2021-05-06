@@ -3,9 +3,10 @@ import json
 import os
 import sys, pymongo
 from pymongo import MongoClient
+from transaction_retry import Transaction_Functor, run_transaction_with_retry, commit_with_retry
 
 def mongo_client_online():
-	return MongoClient("mongodb+srv://<user>:<password>@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
+	return MongoClient("mongodb+srv://cata:distrib@cluster0.gqnq7.mongodb.net/mapDatabase?retryWrites=true&w=majority")
 
 def mongo_client_local():
  	return pymongo.MongoClient('127.0.0.1', 27017)
@@ -82,13 +83,14 @@ def initializeMap(mongo_client, nodes, mapName):
 # outgoing -  list of outgoing connections from this city. e.g Dublin-Cork and their corresponding data. This is also a map of tuples. map[Cork] = (5,100)
 # Warning: If Dublin - Limerick connection is added twice, it will be kept as duplicate.
 # TODO(catalina): Add date time to another collection .
-def addToMap(mongo_client, city, server, incoming, outgoing):
+def addToMap(mongo_client, databaseName , city, server, incoming, outgoing,session=None):
 	# Modify outgoing connections first because it's easier.
 	# check if city exists already
 	# This command creates a new database on your cluster called GlobalMap.
-	db = mongo_client.Map
+	db = mongo_client[databaseName]
 	# This command creates a new collection in your database called Cities.
 	cities_collection = db.Cities
+
 
 	# Handle outgoing connections first.
 	if outgoing:
@@ -97,17 +99,18 @@ def addToMap(mongo_client, city, server, incoming, outgoing):
 		to_update = False
 		if not node:
 			object_outgoing = json_object(city,server, [], outgoing)
-			print("new city")
+			print("New city")
 		else:
 			# server is overwritten!
 			to_update = True
 			# This is duplicating informatioN!!!
 			object_outgoing = json_object(city, server, node["connections"], outgoing)
+			print("Existing city", node)
 
 		if not to_update:
-			cities_collection.insert_one(object_outgoing)
+			cities_collection.insert_one(object_outgoing,session=session)
 		else:
-			cities_collection.update_one({ "name": city }, { "$set": object_outgoing  })
+			cities_collection.update_one({ "name": city }, { "$set": object_outgoing  },session=session)
 
 	# handle incoming connections
 	if incoming:
@@ -119,7 +122,7 @@ def addToMap(mongo_client, city, server, incoming, outgoing):
 				object_incoming = json_object(key, server, [], {city:incoming[key]})
 			else:
 				object_incoming = json_object(key, node['server'], node["connections"], {city:incoming[key]})
-				cities_collection.update_one({ "name": key }, { "$set": object_incoming  })
+				cities_collection.update_one({ "name": key }, { "$set": object_incoming  },session=session)
 
 
 def json_object(city, server, existing, outcoming):
@@ -132,26 +135,29 @@ def json_object(city, server, existing, outcoming):
 	data_set = {"name": city, "server": server, "connections": existing}
 
 	json_dump = json.dumps(data_set)
-	print(json_dump)
+	print("Adding to database:",json_dump)
 	return json.loads(json_dump)
 
-def callback(session):
-	addToMap(mongo_client, "Cluj","URL:5",{"Limerick":(2,5)}, {})
 
-mongo_client = mongo_client_online()
+def expandMap(mongo_client, databaseName , city, server, incoming, outgoing):
+	booking_functor = Transaction_Functor(addToMap,mongo_client, databaseName , city, server, incoming, outgoing)
+	with mongo_client.start_session() as session:
+		run_transaction_with_retry( booking_functor, session)
 
 if __name__ == '__main__':
 	#args = readCommand( sys.argv[1:] ) # Get game components based on input
 	#"Cork":(2,5), "Dublin":(3,10)
 	# Step 2: Start a client session.
 	# At any given time, you can have at most one open transaction for a session.
-	with mongo_client.start_session() as session:
+	mongo_client = mongo_client_online()
+	expandMap(mongo_client, "Map", "New York","URL:5",{"Limerick":(2,5)}, {"Limerick":(2,5)})
+	#with mongo_client.start_session() as session:
 	    # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
-		session.with_transaction(callback)
+		#session.with_transaction(callback)
 
 	db = mongo_client.Map
 	cities_collection = db.Cities
-	node = cities_collection.find_one({ "name":"Sibiu" })
+	node = cities_collection.find_one({ "name": "Limerick" })
 	print(node)
-	node = cities_collection.find_one({ "name":"Limerick" })
+	node = cities_collection.find_one({ "name":"New York" })
 	print(node)
