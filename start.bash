@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 echo "Starting Map DB (replica)"
-cd SetupShardingAndReplica/replica/ && ./replica.bash && cd ../../..
+cd SetupShardingAndReplica/replica/ && ./replica.bash && cd ../..
 echo "Starting Journey DB (sharding)"
-cd SetupShardingAndReplica/sharding && ./shard.bash && cd ..
+cd SetupShardingAndReplica/sharding && ./shard.bash && cd ../..
 
-for i in {0..1}
+for i in {0..0}
 do
 	echo "Starting Trip DB for server $i"
 	./startTripDB.bash i
