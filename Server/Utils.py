@@ -5,7 +5,10 @@ import numpy as np
 from bidict import bidict
 import datetime
 import requests
+import time
 from DataBase import DB
+from dateutil import parser as datetimeparser
+from os import path
 
 dummyMapList = '''[{"_id": "Dublin", "Server": "localhost:8080", "Connections": [{"City":"Cork", "Time":"2", "Bandwidth":"100"}, {"City":"Belfast", "Time":"3", "Bandwidth":"100"} ]},
                 {"_id": "Cork", "Server": "localhost:8081", "Connections": [ {"City":"Dublin", "Time":"2", "Bandwidth":"100"}, {"City":"Limerick", "Time":"1", "Bandwidth":"10"} ]},
@@ -13,7 +16,8 @@ dummyMapList = '''[{"_id": "Dublin", "Server": "localhost:8080", "Connections": 
                 {"_id": "Belfast", "Server": "localhost:8081", "Connections": [{"City":"Dublin", "Time":"2", "Bandwidth":"100"}, {"City":"Limerick", "Time":"1", "Bandwidth":"10"} ]}]'''
 
 class Util:
-    def __init__(self):
+    def __init__(self, i):
+        self.file = "transaction_logs_" + str(i) + ".txt"
         self.DistanceMap = None
         self.CapacityMap = None
         self.Cities = None
@@ -101,6 +105,103 @@ class Util:
             return 1
         return 0
 
+    def book_transaction(self, jid, trips, transaction_status, db):
+        mapp = None
+        self.parse_map_cities_servers(mapp)
+        if trips is not None:
+            for trip in trips:
+                if trip["From"] not in self.OwnCities:
+                    return {'message': 'City moved'}, 400
+
+        # no need for follower log file, but it helps when restarting if leader logged commit but new booking request
+        # comes in before leader retransmit
+        TransLogFile = self.file
+        log = dict()
+        log["Leader"] = False
+        log["JID"] = jid
+        log["Type"] = "book"
+        log["Trips"] = trips
+        log["Status"] = "prepared"
+        if transaction_status == "prepared":
+            # todo actually check for timeouts
+            timeout_start = time.perf_counter()
+            for trip in trips:
+                db.trip_r_acquire(jid)
+                # todo check if links at capacity
+                load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+                # after or: Jid was used before, retry transaction
+                if jid not in db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["JID"]:
+                    db.trip_r_release(jid)
+                    log["Status"] = "abort"
+                    if path.isfile(TransLogFile):
+                        with open(TransLogFile, "a") as fp:
+                            fp.write(',\n' + json.dumps(log))
+                    else:
+                        with open(TransLogFile, "w") as fp:
+                            fp.write(json.dumps(log))
+                    return {'message': 'Retry'}, 400
+                if load >= self.CapacityMap[self.Cities.inverse[trip["From"]], self.Cities.inverse[trip["To"]]]:
+                    db.trip_r_release(jid)
+                    log["Status"] = "abort"
+                    if path.isfile(TransLogFile):
+                        with open(TransLogFile, "a") as fp:
+                            fp.write(',\n' + json.dumps(log))
+                    else:
+                        with open(TransLogFile, "w") as fp:
+                            fp.write(json.dumps(log))
+                    return {'message': 'Link at capacity'}, 400
+            db.trip_w_acquire(jid)
+            load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+            if load >= self.CapacityMap[self.self.inverse[trip["From"]], self.Cities.inverse[trip[1]]]:
+                db.trip_w_release(jid)
+                log["Status"] = "abort"
+                if path.isfile(TransLogFile):
+                    with open(TransLogFile, "a") as fp:
+                        fp.write(',\n' + json.dumps(log))
+                else:
+                    with open(TransLogFile, "w") as fp:
+                        fp.write(json.dumps(log))
+                return {'message': 'Link at capacity'}, 400
+
+            log["Status"] = "commit"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "commit":
+            if jid not in db.getTripsByLinkAndTime(trips[0]["From"], trips[0]["To"], trips[0]["At"])["JID"]:
+                for trip in trips:
+                    trp = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])
+                    trp["Capacity"] = trp["Capacity"] + 1
+                    trp["JID"] = trp["JID"] + [jid]
+                    DB.addTrip(trp)
+            db.trip_w_release(jid)
+            log["Status"] = "complete"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "abort":
+            db.trip_w_release(jid)
+            log["Status"] = "abort"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+        else:
+            return {'message': 'transaction_status should be one of prepared, commit or abort'}, 400
+
     def try_delete(self, uid, jid):
         # delete whole journey if deleted return 0, if no journey with id = jid return 1, if denied return 2
         # todo implementation
@@ -116,6 +217,8 @@ class Util:
 
     def leader_transaction_message(self, trips, start_time, jid, type, status):
         resps = []
+        if isinstance(start_time, str):
+            start_time = datetimeparser.parse(start_time, fuzzy_with_tokens=True)
         for city in trips:
             trip_start_time = start_time
             delta = datetime.timedelta(hours=city[3])
