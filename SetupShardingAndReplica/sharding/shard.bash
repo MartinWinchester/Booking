@@ -360,15 +360,7 @@ EOF
   quit()
 EOF
 fi
-  mongo -port 27123 << EOF
-  rs.secondaryOk()
-  quit()
-EOF
 
-  mongo -port 27133 << EOF
-  rs.secondaryOk()
-  quit()
-EOF
 
   mongos -f mongo1/conf/mongos.conf --fork
   mongo --port 27119 << EOF

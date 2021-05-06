@@ -20,17 +20,30 @@ class DB:
 		self.journey_alts = journey_alts
 		self.trip_lock_r = None
 		self.trip_lock_w = None
-		self.trips_client = MongoClient(trip_host, trip_port)
+		# self.trips_client = MongoClient()
+		# self.trips_client = MongoClient(trip_host, trip_port)
 		self.journeys_client = MongoClient(journey_host, journey_port)
-		self.map_client = MongoClient(map_host, map_port)
+		# self.map_client = MongoClient(map_host, map_port)
+		self.trips_client = MongoClient("localhost:27030", replicaSet="trip0")
+		# self.journeys_client = MongoClient("localhost:27119")
+		self.map_client = MongoClient("localhost:27001", replicaSet="rs")
 
 	def addTrip(self, trip):
 		mongo_collection = self.trips_client['Trips']['Trips']
-		mongo_collection.insert_many(trip)
+		mongo_collection.insert_one(trip)
+
+	def updateTrip(self, trip):
+		print("UPDATEING TRIP😐!!!!!!!!!")
+		print(trip)
+		mongo_collection = self.trips_client['Trips']['Trips']
+		dbfilter = {"$and": [{"From": trip["From"]}, {"To":trip["To"]}, {"At": trip["At"]}]}
+		mongo_collection.update_one(dbfilter,
+			{'$push': {'JID': trip["JID"]}, '$set': {'Capacity': trip["Capacity"]}},upsert=True)
+
 
 	def deleteJourney(self, uid ,jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		mongo_collection.update_one({'UID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
+		mongo_collection.update_one({'UID': uid}, {'$pull': {'Journeys': {'JID': jid}}})
 
 	def addJourney(self, uid ,journey):
 		mongo_collection = self.journeys_client['Journey']['Journey']
@@ -40,9 +53,21 @@ class DB:
 			mongo_collection.insert_one(data)
 
 
+	def changeJourneyDatabase(self):
+		if self.journey_database == 0:
+			self.journeys_client = MongoClient(journey_alts[0])
+			self.journey_database = 1
+			return True
+		if self.journey_database == 1:
+			self.journeys_client = MongoClient(journey_alts[1])
+			self.journey_database = 2
+			return True
+		return False
+
+
 	def getByJourneyID(self, jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		trips = mongo_collection.find({'JourneyID': jid})
+		trips = mongo_collection.find({'JID': jid})
 		json_docs = []
 		for trip in trips:
 			json_doc = json.dumps(trip, default=json_util.default)
@@ -58,14 +83,21 @@ class DB:
 			json_docs.append(json_doc)
 		return json_docs
 
-	def getTripsByLinkAndTime(self, source, destination, time):
+	def getTripsByLinkAndTime(self, From, To, time):
 		mongo_collection = self.trips_client['Trips']['Trips']
-		trips = mongo_collection.find({"$and": [{"Source": source}, {"Destination":destination}, {"Leave at": time}]})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
+		trips = mongo_collection.find_one({"$and": [{"From": From}, {"To":To}, {"At": time}]})
+		# json_docs = []
+		# for trip in trips:
+		# 	json_doc = json.dumps(trip, default=json_util.default)
+		# 	json_docs.append(json_doc)
+		# return json_docs
+		print("^^^^^^^^^getTripsByLinkAndTime^^^^^^^^^^^^")
+		if not trips:
+			print(0)
+			return {"Capacity":0,"JID":[" "]}
+		else:
+			print(trips['Capacity'])
+			return trips
 
 	def trip_r_acquire(self, jid):
 		while 1:

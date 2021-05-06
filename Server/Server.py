@@ -22,7 +22,7 @@ arg_parser.add_argument("-dbr", "--database_replicas", default=2)
 arg_parser.add_argument("-gdb", "--globaldb", default="localhost:27119")
 arg_parser.add_argument("-gdbr", "--global_database_replicas", default=2)
 
-arg_parser.add_argument("-mdb", "--mapdb", default="localhost:27017")
+arg_parser.add_argument("-mdb", "--mapdb", default="localhost:27001")
 arg_parser.add_argument("-mdbr", "--map_database_replicas", default=2)
 
 arg_parser.add_argument("-i", "--serverid", default="0")
@@ -95,16 +95,22 @@ class Book(Resource):
         # todo check that Source, Destination in Map
         cities = Util.find_shortest_path(args['Source'], args['Destination'])
         # todo wait for task to find update time to finish
-        if MapLatest < new_update_time:
-            # todo: change next line to fetch request from real DB
-            map = None
-            DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(map)
-            cities = Util.find_shortest_path(args['Source'], args['Destination'])
+        # if MapLatest < new_update_time:
+        
+        mapp = db.get_map()
+        print(mapp)
+        DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mapp)
+            # hops [(From, To, Duration)]
+        cities = Util.find_shortest_path(args['Source'], args['Destination'])
+        # [(Url, From, To, Duration)]
         city_contacts = [(CitiesToServers[city[0]], city[0], city[1], city[2]) for city in cities]
+        # trips dealt with locally
         own_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] in OwnCities]
+        # trips dealt by other servers
         follower_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] not in OwnCities]
 
         start_time = datetimeparser.parse(args['At'], fuzzy_with_tokens=True)
+        
         # PREPARED
         state = "prepared"
         journey = dict()
@@ -185,6 +191,14 @@ class Book(Resource):
                 failed = [response for response in resps if response[4].status_code != 200 and
                           response[4].text != "Link at capacity"]
 
+        dictTrips = Util.dictionary_trips(jid, start_time,own_trips)
+        tmsg,serverRsp = Util.book_transaction(jid, dictTrips, state, db)
+        print("server prepared state response")
+        print(tmsg)
+        print(serverRsp)
+        if serverRsp==400:
+            return {'message': "Journey denied."}, 503
+
         # by the time we're here no aborts
         # COMMIT
         state = "commit"
@@ -196,14 +210,26 @@ class Book(Resource):
             with open(TransLogFile, "w") as fp:
                 fp.write(json.dumps(log))
 
-        Util.book_transaction(jid, own_trips, state, db)
-        db.addJourney(args['UID'], journey)
-        db.addTrip()
+        # dict_trips = json.dumps([
+        #         {"From": city[1], "To": city[2], "At": trip_start_time.strftime("%m/%d/%Y, %H:%M:%S")}])
+        
+        print("In server")
+        print("state"+str(state))
+        resps = Util.leader_transaction_message(follower_trips, start_time, jid, "book", state)
+        failed = [response for response in resps if response[4].status_code != 200]
 
-        failed = city_contacts
+        print("!!!!!!")
+        print(journey)
+        print(args['UID'])
+        db.addJourney(args['UID'], journey)
+        dictTrips = Util.dictionary_trips(jid, start_time,own_trips)
+        Util.book_transaction(jid, dictTrips, state, db)
+
+
+      
         while failed:
             # send all followers "commit" message
-            resps = Util.leader_transaction_message(city_contacts, start_time, jid, "book", state)
+            resps = Util.leader_transaction_message(follower_trips, start_time, jid, "book", state)
             failed = [response for response in resps if response[4].status_code != 200]
 
 
@@ -261,6 +287,7 @@ class Transaction(Resource):
         transaction_status = args['Status']
         trips = json.loads(args['Trips'])
         if transaction_type == "book":
+            print("transaction..........")
             return Util.book_transaction(jid, trips, transaction_status, db)
 
 
