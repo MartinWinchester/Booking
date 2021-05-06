@@ -9,7 +9,6 @@ from bson import json_util
 
 
 class DB:
-	# todo AddJourney, GetTripsByUUID
 	# todo add func to check if DB available and if not replace with a replica, check before all operations
 	# todo add func to get LastUpdatedAt timestamp
 	def __init__(self, trip_host, trip_port, journey_host, journey_port, trip_alts=None, journey_alts=None):
@@ -20,46 +19,116 @@ class DB:
 		# todo make these client RWlock-able
 		self.trips_client = MongoClient(trip_host, trip_port)
 		self.journeys_client = MongoClient(journey_host, journey_port)
+		self.trip_database = 0
+		self.journey_database = 0
+
+	def changeTripDatabase(self):
+		if self.trip_database == 0:
+			self.trips_client = MongoClient(trip_alts[0])
+			self.trip_database = 1
+			return True
+		if self.trip_database == 1:
+			self.trips_client = MongoClient(trip_alts[1])
+			self.trip_database = 2
+			return True
+		return False
+
+	def changeJourneyDatabase(self):
+		if self.journey_database == 0:
+			self.journeys_client = MongoClient(journey_alts[0])
+			self.journey_database = 1
+			return True
+		if self.journey_database == 1:
+			self.journeys_client = MongoClient(journey_alts[1])
+			self.journey_database = 2
+			return True
+		return False
 
 	def addTrip(self, trip):
-		mongo_collection = self.trips_client['Trips']['Trips']
-		mongo_collection.insert_many(trip)
+		while True:
+			try:
+				mongo_collection = self.trips_client['Trips']['Trips']
+				mongo_collection.insert_many(trip)
+				trip_database = 0
+				break
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeTripDatabase()
+				if not changed:
+					break
+
 
 	def deleteJourney(self, uid ,jid):
-		mongo_collection = self.journeys_client['Journey']['Journey']
-		mongo_collection.update_one({'UUID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
+		while True:
+			try:
+				mongo_collection = self.journeys_client['Journey']['Journey']
+				mongo_collection.update_one({'UUID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
+				journey_database = 0
+				break
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeJourneyDatabase()
+				if not changed:
+					break
 
 	def addJourney(self, uid ,journey):
-		mongo_collection = self.journeys_client['Journey']['Journey']
-		updated = mongo_collection.update_one({'UUID': uid}, {'$push': {'Journeys': journey}})
-		if updated.matched_count == 0:
-			data = {"UUID":uid,"Journeys":[journey]}
-			mongo_collection.insert_one(data)
+		while True:
+			try:
+				mongo_collection = self.journeys_client['Journey']['Journey']
+				updated = mongo_collection.update_one({'UUID': uid}, {'$push': {'Journeys': journey}})
+				if updated.matched_count == 0:
+					data = {"UUID":uid,"Journeys":[journey]}
+					mongo_collection.insert_one(data)
+				journey_database = 0
+				break
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeJourneyDatabase()
+				if not changed:
+					break
 
 
 	def getByJourneyID(self, jid):
-		mongo_collection = self.journeys_client['Journey']['Journey']
-		trips = mongo_collection.find({'JourneyID': jid})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
+		while True:
+			try:
+				mongo_collection = self.journeys_client['Journey']['Journey']
+				trips = mongo_collection.find({'JourneyID': jid})
+				json_docs = []
+				for trip in trips:
+					json_doc = json.dumps(trip, default=json_util.default)
+					json_docs.append(json_doc)
+				journey_database = 0
+				return json_docs
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeJourneyDatabase()
+				if not changed:
+					break
 
 	def getByUUID(self, uid):
-		mongo_collection = self.journeys_client['Journey']['Journey']
-		trips = mongo_collection.find({'UUID': uid})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
+		while True:
+			try:
+				mongo_collection = self.journeys_client['Journey']['Journey']
+				trips = mongo_collection.find({'UUID': uid})
+				json_docs = []
+				for trip in trips:
+					json_doc = json.dumps(trip, default=json_util.default)
+					json_docs.append(json_doc)
+				journey_database = 0
+				return json_docs
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeJourneyDatabase()
+				if not changed:
+					break
 
 	def getTripsByLinkAndTime(self, source, destination, time):
-		mongo_collection = self.trips_client['Trips']['Trips']
-		trips = mongo_collection.find({"$and": [{"Source": source}, {"Destination":destination}, {"Leave at": time}]})
-		json_docs = []
-		for trip in trips:
-			json_doc = json.dumps(trip, default=json_util.default)
-			json_docs.append(json_doc)
-		return json_docs
+		while True:
+			try:
+				mongo_collection = self.trips_client['Trips']['Trips']
+				trips = mongo_collection.find({"$and": [{"Source": source}, {"Destination":destination}, {"Leave at": time}]})
+				json_docs = []
+				for trip in trips:
+					json_doc = json.dumps(trip, default=json_util.default)
+					json_docs.append(json_doc)
+				trip_database = 0
+				return json_docs
+			except pymongo.errors.ServerSelectionTimeoutError as err:
+				changed = changeTripDatabase()
+				if not changed:
+					break
