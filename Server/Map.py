@@ -2,11 +2,14 @@ import numpy as np
 import json
 import os
 import sys, pymongo
-
+import ast
+sys.path.append('../Clients')
 from bson import json_util
 import json
 from flask import Flask, jsonify, json
 from flask_restful import Api, Resource, reqparse
+from CityBuilderClient import expandMap
+
 
 def parse_json(data):
     return json.loads(json_util.dumps(data))
@@ -24,7 +27,7 @@ class Map(Resource):
 
         # Host and Port of mongo_client to be used for this Database.
         parser.add_argument('Host', required=True)
-        parser.add_argument('Port', required=True)
+        parser.add_argument('ReplicaSetName', required=True)
 
         args = parser.parse_args()
 
@@ -43,14 +46,14 @@ class Map(Resource):
         if nodes == []:
             return {'message': "Cannot find specified json files in the location specified."}, 404
 
-        ## Port is an int! Convert the string to an int
+
         port = int(args['Port'])
 
-        mongo_client = pymongo.MongoClient(args['Host'], port)
+        mongo_client = pymongo.MongoClient(args['Host'], replicaSet = args['ReplicaSetName'])
 
         # This command creates a new database.
         databaseName = args['DatabaseName']
-        db = mongo_client.databaseName
+        db = mongo_client[databaseName]
     	# This command creates a new collection in your database called Cities.
         cities_collection = db.Cities
 
@@ -78,8 +81,28 @@ class Map(Resource):
 
         # This command creates a new database.
         databaseName = args['DatabaseName']
-        db = mongo_client.databaseName
+        db = mongo_client[databaseName]
     	# This command creates a new collection in your database called Cities.
         cities_collection = db.Cities
         data = parse_json(cities_collection.find_one({ "name": args['City']}))
         return {'message': data}, 200
+
+    def post(self):
+        parser = reqparse.RequestParser()
+        # This is the name of the database to be created
+        parser.add_argument('DatabaseName', required=True)
+
+        # Host and Port of mongo_client to be used for this Database.
+        parser.add_argument('Host', required=True)
+        parser.add_argument('Port', required=True)
+        parser.add_argument('City', required = True)
+        parser.add_argument('Server', required=True)
+        parser.add_argument('Incoming', required = True)
+        parser.add_argument('Outgoing', required=True)
+
+        args = parser.parse_args()
+        port = int(args['Port'])
+        incoming = ast.literal_eval(args['Incoming'])
+        outgoing = ast.literal_eval(args['Outgoing'])
+        mongo_client = pymongo.MongoClient(args['Host'], port)
+        expandMap(mongo_client, args['DatabaseName'] , args['City'], args['Server'],incoming,outgoing )

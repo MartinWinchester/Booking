@@ -8,27 +8,27 @@ touch log/rs1.log log/rs2.log log/rs3.log
 
 if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     echo "logpath=$(pwd)/log/rs1.log
-	dbpath = $(pwd)/data/rs1  
-	journal=true                                             
-	port=27001                                               
-	replSet=rs                                               
-	logappend=true                                           
+	dbpath = $(pwd)/data/rs1
+	journal=true
+	port=27001
+	replSet=rs
+	logappend=true
 	fork = true " > conf/rs1/rs1.cfg
 
 	echo "logpath=$(pwd)/log/rs2.log
-	dbpath=$(pwd)/data/rs2 
-	journal=true                                             
-	port=27002                                               
-	replSet=rs                           
-	logappend=true                                           
+	dbpath=$(pwd)/data/rs2
+	journal=true
+	port=27002
+	replSet=rs
+	logappend=true
 	fork = true " > conf/rs2/rs2.cfg
 
 	echo "logpath=$(pwd)/log/rs3.log
-	dbpath=$(pwd)/data/rs3  
-	journal=true                                             
-	port=27003                                              
-	replSet=rs                                               
-	logappend=true                                           
+	dbpath=$(pwd)/data/rs3
+	journal=true
+	port=27003
+	replSet=rs
+	logappend=true
 	fork = true " > conf/rs3/rs3.cfg
 
 	mongod -f conf/rs1/rs1.cfg &&
@@ -66,29 +66,29 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 	echo "$base"
 
 	echo "logpath=$base/log/rs1.log
-dbpath=$base/data/rs1  
-journal=true                                             
-port=27001                                               
-replSet=rs                                               
+dbpath=$base/data/rs1
+journal=true
+port=27001
+replSet=rs
 logappend=true" > conf/rs1/rs1.cfg
 
 	echo "logpath=$base/log/rs2.log
-dbpath=$base/data/rs2 
-journal=true                                             
-port=27002                                               
-replSet=rs                           
+dbpath=$base/data/rs2
+journal=true
+port=27002
+replSet=rs
 logappend=true" > conf/rs2/rs2.cfg
 
 	echo "logpath=$base/log/rs3.log
-dbpath=$base/data/rs3  
-journal=true                                             
-port=27003                                              
-replSet=rs                                               
+dbpath=$base/data/rs3
+journal=true
+port=27003
+replSet=rs
 logappend=true" > conf/rs3/rs3.cfg
-	
+
 	cat conf/rs1/rs1.cfg
 	start mongod -f conf/rs1/rs1.cfg
-	start mongod -f conf/rs2/rs2.cfg 
+	start mongod -f conf/rs2/rs2.cfg
 	start mongod -f conf/rs3/rs3.cfg
 	ready=$(netstat -a | grep ":2700" | grep -c "LISTENING")
 	echo $ready
@@ -97,7 +97,7 @@ logappend=true" > conf/rs3/rs3.cfg
 		ready=$(netstat -a | grep ":2700" | grep -c "LISTENING")
 		echo $ready
 	done
-	
+
 	mongo -port 27001 & << EOF
 rs.initiate( {
    _id : "rs",
