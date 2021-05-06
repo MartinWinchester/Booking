@@ -10,7 +10,7 @@ import time
 from readerwriterlock import rwlock
 
 class DB:
-	# todo AddJourney, GetTripsByUUID
+	# todo AddJourney, GetTripsByUID
 	# todo add func to check if DB available and if not replace with a replica, check before all operations
 	# todo add func to get LastUpdatedAt timestamp
 	def __init__(self, trip_host, trip_port, journey_host, journey_port, map_host, map_port,trip_alts=None, journey_alts=None,map_alts=None):
@@ -30,13 +30,13 @@ class DB:
 
 	def deleteJourney(self, uid ,jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		mongo_collection.update_one({'UUID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
+		mongo_collection.update_one({'UID': uid}, {'$pull': {'Journeys': {'JourneyID': jid}}})
 
 	def addJourney(self, uid ,journey):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		updated = mongo_collection.update_one({'UUID': uid}, {'$push': {'Journeys': journey}})
+		updated = mongo_collection.update_one({'UID': uid}, {'$push': {'Journeys': journey}})
 		if updated.matched_count == 0:
-			data = {"UUID":uid,"Journeys":[journey]}
+			data = {"UID":uid,"Journeys":[journey]}
 			mongo_collection.insert_one(data)
 
 
@@ -49,9 +49,9 @@ class DB:
 			json_docs.append(json_doc)
 		return json_docs
 
-	def getByUUID(self, uid):
+	def getByUID(self, uid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
-		trips = mongo_collection.find({'UUID': uid})
+		trips = mongo_collection.find({'UID': uid})
 		json_docs = []
 		for trip in trips:
 			json_doc = json.dumps(trip, default=json_util.default)

@@ -399,9 +399,9 @@ if [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo1/log/config.log
+    path: $base/mongo1/log/config.log
 storage:
-    dbPath: $(pwd)/mongo1/data/config
+    dbPath: $base/mongo1/data/config
     journal:
         enabled: true 
 processManagement:
@@ -418,7 +418,7 @@ sharding:
   echo "systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo1/log/mongos.log
+    path: $base/mongo1/log/mongos.log
 net:
     port: 27119 
     bindIp: 0.0.0.0
@@ -433,9 +433,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo1/log/shard1.log
+    path: $base/mongo1/log/shard1.log
 storage:
-    dbPath: $(pwd)/mongo1/data/shard1  
+    dbPath: $base/mongo1/data/shard1  
     journal:
       enabled: true
 processManagement:
@@ -451,9 +451,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo1/log/shard2.log
+    path: $base/mongo1/log/shard2.log
 storage:
-    dbPath: $(pwd)/mongo1/data/shard2
+    dbPath: $base/mongo1/data/shard2
     journal:
         enabled: true
 processManagement:
@@ -469,9 +469,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo1/log/shard3.log
+    path: $base/mongo1/log/shard3.log
 storage:
-    dbPath: $(pwd)/mongo1/data/shard3
+    dbPath: $base/mongo1/data/shard3
     journal:
         enabled: true
 processManagement:
@@ -487,9 +487,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo2/log/config.log
+    path: $base/mongo2/log/config.log
 storage:
-    dbPath: $(pwd)/mongo2/data/config
+    dbPath: $base/mongo2/data/config
     journal:
         enabled: true 
 processManagement:
@@ -506,7 +506,7 @@ sharding:
   echo "systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo2/log/mongos.log
+    path: $base/mongo2/log/mongos.log
 net:
     port: 27129 
     bindIp: 0.0.0.0
@@ -521,9 +521,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo2/log/shard1.log
+    path: $base/mongo2/log/shard1.log
 storage:
-    dbPath: $(pwd)/mongo2/data/shard1  
+    dbPath: $base/mongo2/data/shard1  
     journal:
         enabled: true
 processManagement:
@@ -539,9 +539,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo2/log/shard2.log
+    path: $base/mongo2/log/shard2.log
 storage:
-    dbPath: $(pwd)/mongo2/data/shard2
+    dbPath: $base/mongo2/data/shard2
     journal:
       enabled: true
 processManagement:
@@ -557,9 +557,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo2/log/shard3.log
+    path: $base/mongo2/log/shard3.log
 storage:
-    dbPath: $(pwd)/mongo2/data/shard3
+    dbPath: $base/mongo2/data/shard3
     journal:
         enabled: true
 processManagement:
@@ -575,9 +575,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo3/log/config.log
+    path: $base/mongo3/log/config.log
 storage:
-    dbPath: $(pwd)/mongo3/data/config
+    dbPath: $base/mongo3/data/config
     journal:
       enabled: true 
 processManagement:
@@ -594,7 +594,7 @@ sharding:
   echo "systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo3/log/mongos.log
+    path: $base/mongo3/log/mongos.log
 net:
     port: 27139 
     bindIp: 0.0.0.0
@@ -609,9 +609,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo3/log/shard1.log
+    path: $base/mongo3/log/shard1.log
 storage:
-    dbPath: $(pwd)/mongo3/data/shard1  
+    dbPath: $base/mongo3/data/shard1  
     journal:
         enabled: true
 processManagement:
@@ -627,9 +627,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo3/log/shard2.log
+    path: $base/mongo3/log/shard2.log
 storage:
-    dbPath: $(pwd)/mongo3/data/shard2
+    dbPath: $base/mongo3/data/shard2
     journal:
         enabled: true
 processManagement:
@@ -645,9 +645,9 @@ sharding:
 systemLog:
     destination: file
     logAppend: true
-    path: $(pwd)/mongo3/log/shard3.log
+    path: $base/mongo3/log/shard3.log
 storage:
-    dbPath: $(pwd)/mongo3/data/shard3
+    dbPath: $base/mongo3/data/shard3
     journal:
         enabled: true
 processManagement:
