@@ -1,0 +1,7 @@
+{
+	"name":"Paris",
+	"server":"localhost:8082",
+	"connections":
+	[
+		{"name":"Kerry", "time":2, "bandwidth": 1000},
+}

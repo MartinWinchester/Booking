@@ -1,0 +1,8 @@
+{
+	"name":"Cluj",
+	"server":"localhost:8081",
+	"connections":
+	[
+		{"name":"Bucharest", "time":2, "bandwidth": 100},
+		{"name":"Valea", "time":5, "bandwidth": 10} ]
+}
