@@ -33,7 +33,8 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	mongod -f conf/rs1/rs1.cfg &&
 	mongod -f conf/rs2/rs2.cfg &&
 	mongod -f conf/rs3/rs3.cfg
-	mongo -port 2702$1 << EOF
+
+	mongo -port $(($1 + 27020)) << EOF
 	rs.initiate( {
 	   _id : "trip$1",
 	   members: [
@@ -44,12 +45,12 @@ if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
 	})
 EOF
 
-	mongo -port 2703$1 <<EOF
+	mongo -port $(($1 + 27030)) <<EOF
 	rs.secondaryOk()
 	quit()
 EOF
 
-	mongo -port 2704$1 <<EOF
+	mongo -port $(($1 + 27040)) <<EOF
 	rs.secondaryOk()
 	quit()
 EOF
@@ -81,7 +82,7 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 	logappend=true" > conf/rs3/rs3.cfg
 
 	start mongod -f conf/rs1/rs1.cfg
-	mongo -port 2702$1 & << EOF
+	mongo -port $(($1 + 27020)) & << EOF
 	rs.initiate( {
 	   _id : "trip$1",
 	   members: [
@@ -93,13 +94,13 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 EOF
 
 	start mongod -f conf/rs2/rs2.cfg 
-	mongo -port 273$1 & <<EOF
+	mongo -port $(($1 + 27030)) & <<EOF
 	rs.secondaryOk()
 	quit()
 EOF
 
 	start mongod -f conf/rs3/rs3.cfg
-	mongo -port 2704$1 & <<EOF
+	mongo -port $(($1 + 27040)) & <<EOF
 	rs.secondaryOk()
 	quit()
 EOF
