@@ -13,7 +13,7 @@ class DB:
 	# todo AddJourney, GetTripsByUUID
 	# todo add func to check if DB available and if not replace with a replica, check before all operations
 	# todo add func to get LastUpdatedAt timestamp
-	def __init__(self, trip_host, trip_port, journey_host, journey_port, trip_alts=None, journey_alts=None):
+	def __init__(self, trip_host, trip_port, journey_host, journey_port, map_host, map_port,trip_alts=None, journey_alts=None,map_alts=None):
 		# host: string, port: int
 		# alts: list of forwarding info to replicas
 		self.trip_alts = trip_alts
@@ -22,6 +22,7 @@ class DB:
 		self.trip_lock_w = None
 		self.trips_client = MongoClient(trip_host, trip_port)
 		self.journeys_client = MongoClient(journey_host, journey_port)
+		self.map_client = MongoClient(map_host, map_port)
 
 	def addTrip(self, trip):
 		mongo_collection = self.trips_client['Trips']['Trips']
@@ -104,3 +105,15 @@ class DB:
 			return 0
 		except:
 			return 1
+
+
+
+	def get_map(self):
+		mongo_client = self.map_client
+		# This command creates a new database.
+		db = mongo_client.Map
+		# This command creates a new collection in your database called Cities.
+		cities_collection = db.Cities
+		data = cities_collection.find()
+		print(data)
+		return json.dumps(data)

@@ -49,7 +49,8 @@ class Map(Resource):
 
         port = int(args['Port'])
 
-        mongo_client = pymongo.MongoClient(args['Host'], replicaSet = args['ReplicaSetName'])
+        mongo_client = pymongo.MongoClient(args['Host'], port)
+        # mongo_client = pymongo.MongoClient(args['Host'], replicaSet = args['ReplicaSetName'])
 
         # This command creates a new database.
         databaseName = args['DatabaseName']

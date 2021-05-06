@@ -54,6 +54,8 @@ EOF
 	rs.secondaryOk()
 	quit()
 EOF
+
+
 elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
 	base="$(pwd)"
 	echo "$base"

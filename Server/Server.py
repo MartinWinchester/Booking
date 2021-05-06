@@ -18,8 +18,13 @@ arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("-s", "--server", default="localhost:8080")
 arg_parser.add_argument("-db", "--database", default="localhost:27020")
 arg_parser.add_argument("-dbr", "--database_replicas", default=2)
-arg_parser.add_argument("-gdb", "--globaldb", default="localhost:27019")
+
+arg_parser.add_argument("-gdb", "--globaldb", default="localhost:27119")
 arg_parser.add_argument("-gdbr", "--global_database_replicas", default=2)
+
+arg_parser.add_argument("-mdb", "--mapdb", default="localhost:27001")
+arg_parser.add_argument("-mdbr", "--map_database_replicas", default=2)
+
 arg_parser.add_argument("-i", "--serverid", default="0")
 args = arg_parser.parse_args()
 
@@ -36,20 +41,27 @@ PortJourneyDb = str.split(args.globaldb, ':')[1]
 # PortTripDb = PortBaseTripDb + ServerId
 PortServer = int(str.split(args.server, ':')[1]) 
 PortTripDb = int(str.split(args.database, ':')[1]) 
+PortMapDb = int(str.split(args.mapdb, ':')[1])
 
 
 # TransLogFile = "../TransactionLogs/transaction_logs_" + str(ServerId) + ".txt"
 TransLogFile = "transaction_logs_" + str(ServerId) + ".txt"
-TripReps = [(str.split(args.database, ':')[0], int(str.split(args.database, ':')[1]) + index) for index in
-            range(int(args.database_replicas)+10)]
-JourneyReps = [(str.split(args.globaldb, ':')[0], int(str.split(args.globaldb, ':')[1]) + index) for index in
-               range(int(args.global_database_replicas)+10)]
+
+TripReps = [(str.split(args.database, ':')[0], int(str.split(args.database, ':')[1]) + index*10) for index in
+            range(int(args.database_replicas)+1)]
+JourneyReps = [(str.split(args.globaldb, ':')[0], int(str.split(args.globaldb, ':')[1]) + index*10) for index in
+               range(int(args.global_database_replicas)+1)]
 # todo fetch map first, pass to map parser
 Util = Utils.Util(ServerId)
 Util.port = PortServer
-DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(None)
-db = DB(str.split(args.server, ':')[0], PortTripDb, str.split(args.globaldb, ':')[0],
-        int(str.split(args.globaldb, ':')[1]), TripReps, JourneyReps)
+
+db = DB(str.split(args.server, ':')[0], PortTripDb, 
+    str.split(args.globaldb, ':')[0],int(str.split(args.globaldb, ':')[1]),
+    str.split(args.mapdb, ':')[0],int(str.split(args.mapdb, ':')[1]),
+     TripReps, JourneyReps)
+mappp=db.get_map()
+print(mappp)
+DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mappp)
 
 
 class Book(Resource):
@@ -229,7 +241,9 @@ class Transaction(Resource):
     def post(self):
         global DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, MapUrl, OwnCities, db
         # todo: change next line to fetch request from real DB
-        mapp = None
+        mapp = db.get_map()
+        print(mapp)
+
         DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mapp)
         parser = reqparse.RequestParser()
         # Journey ID (string)
