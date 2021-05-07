@@ -4,5 +4,6 @@
 	"connections":
 	[
 		{"name":"Cluj", "time":3, "bandwidth": 1000},
-    {"name":"Bucharest", "time":2, "bandwidth": 10},
+    {"name":"Bucharest", "time":2, "bandwidth": 10}
+	]
 }

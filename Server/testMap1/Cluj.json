@@ -4,5 +4,6 @@
 	"connections":
 	[
 		{"name":"Bucharest", "time":2, "bandwidth": 100},
-		{"name":"Valea", "time":5, "bandwidth": 10} ]
+		{"name":"Valea", "time":5, "bandwidth": 10}
+	]
 }

@@ -5,5 +5,6 @@
 	[
 		{"name":"Limerick", "time":1, "bandwidth": 1000},
     {"name":"London", "time":1, "bandwidth": 30},
-    {"name":"Paris", "time":2, "bandwidth": 10},
+    {"name":"Paris", "time":2, "bandwidth": 10}
+	]
 }
