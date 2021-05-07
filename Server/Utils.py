@@ -160,7 +160,7 @@ class Util:
                         with open(TransLogFile, "w") as fp:
                             fp.write(json.dumps(log))
                     return {'message': 'Link at capacity'}, 400
-                
+
 
             # print("write lock")
             # # TODO: check write lock
@@ -206,7 +206,7 @@ class Util:
 
                     trp["Capacity"] = trp["Capacity"] + 1
 
-                    
+
                     trp["From"]=trip["From"]
                     trp["To"] = trip["To"]
                     trp["At"] = trip["At"]
@@ -255,7 +255,103 @@ class Util:
         else:
             return 2
 
-# used by the leader server to contact the followers
+    def cancel_transaction(self, jid, trips, transaction_status, db):
+        mapp = None
+        self.parse_map_cities_servers(mapp)
+        if trips is not None:
+            for trip in trips:
+                if trip["From"] not in self.OwnCities:
+                    return {'message': 'City moved'}, 400
+
+        # no need for follower log file, but it helps when restarting if leader logged commit but new booking request
+        # comes in before leader retransmit
+        TransLogFile = self.file
+        log = dict()
+        log["Leader"] = False
+        log["JID"] = jid
+        log["Type"] = "Cancel"
+        log["Trips"] = trips
+        log["Status"] = "prepared"
+        if transaction_status == "prepared":
+            # todo actually check for timeouts
+            timeout_start = time.perf_counter()
+            for trip in trips:
+                db.trip_r_acquire(jid)
+                load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+                # after or: Jid was used before, retry transaction
+                if jid not in db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["JID"]:
+                    db.trip_r_release(jid)
+                    log["Status"] = "abort"
+                    if path.isfile(TransLogFile):
+                        with open(TransLogFile, "a") as fp:
+                            fp.write(',\n' + json.dumps(log))
+                    else:
+                        with open(TransLogFile, "w") as fp:
+                            fp.write(json.dumps(log))
+                    return {'message': 'Retry'}, 400
+                if 0 > self.CapacityMap[self.Cities.inverse[trip["From"]], self.Cities.inverse[trip["To"]]] - load:
+                    db.trip_r_release(jid)
+                    log["Status"] = "abort"
+                    if path.isfile(TransLogFile):
+                        with open(TransLogFile, "a") as fp:
+                            fp.write(',\n' + json.dumps(log))
+                    else:
+                        with open(TransLogFile, "w") as fp:
+                            fp.write(json.dumps(log))
+                    return {'message': 'capacity cannot be less than zero'}, 400
+            db.trip_w_acquire(jid)
+            load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
+            if 0 >= self.CapacityMap[self.self.inverse[trip["From"]], self.Cities.inverse[trip[1]]] - load:
+                db.trip_w_release(jid)
+                log["Status"] = "abort"
+                if path.isfile(TransLogFile):
+                    with open(TransLogFile, "a") as fp:
+                        fp.write(',\n' + json.dumps(log))
+                else:
+                    with open(TransLogFile, "w") as fp:
+                        fp.write(json.dumps(log))
+                return {'message': 'capacity cannot be less than zero'}, 400
+
+            log["Status"] = "commit"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "commit":
+            if jid not in db.getTripsByLinkAndTime(trips[0]["From"], trips[0]["To"], trips[0]["At"])["JID"]:
+                for trip in trips:
+                    trp = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])
+                    trp["Capacity"] = trp["Capacity"] - 1
+                    trp["JID"] = trp["JID"].remove(jid)
+                    DB.addTrip(trp)
+            db.trip_w_release(jid)
+            log["Status"] = "complete"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+
+        elif transaction_status == "abort":
+            db.trip_w_release(jid)
+            log["Status"] = "abort"
+            if path.isfile(TransLogFile):
+                with open(TransLogFile, "a") as fp:
+                    fp.write(',\n' + json.dumps(log))
+            else:
+                with open(TransLogFile, "w") as fp:
+                    fp.write(json.dumps(log))
+            return {'message': 'Ok'}, 200
+        else:
+            return {'message': 'transaction_status should be one of prepared, commit or abort'}, 400
+
+
     def leader_transaction_message(self, trips, start_time, jid, type, status):
         resps = []
         if isinstance(start_time, str):
@@ -298,4 +394,4 @@ class Util:
             trip_start_time = trip_start_time[0] + delta
             data = {"From": city[1], "To": city[2], "At": trip_start_time.strftime("%m/%d/%Y, %H:%M:%S")}
             resps.append(data)
-        return resps       
+        return resps

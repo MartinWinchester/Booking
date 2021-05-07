@@ -245,6 +245,11 @@ class Book(Resource):
         return {'message': "Journey booked successfully."}, 201
 
     def delete(self):
+        global DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, MapUrl, OwnCities, db
+        # todo task to find update timestamp
+        # new_update_time = DB.getMapUpdateTime()
+        new_update_time = MapLatest
+
         parser = reqparse.RequestParser()
         # user ID
         parser.add_argument('UID', required=True)
@@ -252,14 +257,125 @@ class Book(Resource):
         parser.add_argument('JID', required=True)
         args = parser.parse_args()
 
-        result = Util.try_delete(args['UID'], args['JID'])
 
-        if result == 0:
-            return {'message': 'Journey deleted successfully.'}, 204
-        if result == 1:
-            return {'message': 'Journey not found.'}, 404
-        if result == 2:
-            return {'message': "Operation failed. Try again."}, 503
+        mapp = db.get_map()
+        print(mapp)
+        DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mapp)
+        # hops [(From, To, Duration)]
+        cities = db.getByJourneyID(args['JID'])["cities"]
+        # [(Url, From, To, Duration)]
+        city_contacts = [(CitiesToServers[city[0]], city[0], city[1], city[2]) for city in cities]
+        # trips dealt with locally
+        own_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] in OwnCities]
+        # trips dealt by other servers
+        follower_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] not in OwnCities]
+
+        start_time = datetimeparser.parse(args['At'], fuzzy_with_tokens=True)
+
+        # PREPARED
+        state = "prepared"
+        journey = dict()
+        journey["JID"] = args['JID']
+        journey["Trips"] = city_contacts
+        journey["Cities"] = [city_tuple[0] for city_tuple in cities] + [cities[-1][1]]
+
+        log = dict()
+        log["Leader"] = True
+        log["JID"] = args['JID']
+        log["UID"] = args['UID']
+        log["Type"] = "book"
+        log["Trips"] = json.dumps(city_contacts)
+        log["Status"] = "prepared"
+        log["Followers"] = [city_tuple[0] for city_tuple in cities] + [cities[-1][1]]
+        log["Journey"] = journey
+        if path.isfile(TransLogFile):
+            with open(TransLogFile, "a") as fp:
+                fp.write(',\n' + json.dumps(log))
+        else:
+            with open(TransLogFile, "w") as fp:
+                fp.write(json.dumps(log))
+        # todo actually check for timeouts
+        timeout_start = time.perf_counter()
+
+        # send all followers "prepared" message
+        prepared_resps = Util.leader_transaction_message(follower_trips, " ", args['JID'], "cancel", state)
+
+        # so far so good
+        failed = [res for res in prepared_resps if res[4].status_code != 200]
+        if failed:
+            wait_timer = 0.0001
+            # at least 1 server could not book
+            # send all followers "abort" message
+            while failed:
+                # not really necessary
+                time.sleep(wait_timer)
+                resps = Util.leader_transaction_message(follower_trips, " ", args['JID'], "cancel", state)
+                if [response for response in prepared_resps if response[4].text == "capacity cannot be less than zero"]:
+                    # ABORT
+                    state = "abort"
+                    resps = Util.leader_transaction_message(follower_trips, " ", args['JID'], "cancel", state)
+                    # Journey denied because link is at capacity
+                    log["Status"] = "abort"
+                    if path.isfile(TransLogFile):
+                        with open(TransLogFile, "a") as fp:
+                            fp.write(',\n' + json.dumps(log))
+                    else:
+                        with open(TransLogFile, "w") as fp:
+                            fp.write(json.dumps(log))
+                    return {'message': "cancel denied."}, 503
+                wait_timer += 1
+                failed = [response for response in resps if response[4].status_code != 200 and
+                          response[4].text != "capacity cannot be less than zero"]
+
+        dictTrips = Util.dictionary_trips(args['JID'], "", own_trips)
+        tmsg, serverRsp = Util.cancel_transaction(args['JID'], dictTrips, state, db)
+        print("server prepared state response")
+        print(tmsg)
+        print(serverRsp)
+        if serverRsp == 400:
+            return {'message': "cancel denied."}, 503
+
+        # by the time we're here no aborts
+        # COMMIT
+        state = "commit"
+        log["Status"] = state
+        if path.isfile(TransLogFile):
+            with open(TransLogFile, "a") as fp:
+                fp.write(',\n' + json.dumps(log))
+        else:
+            with open(TransLogFile, "w") as fp:
+                fp.write(json.dumps(log))
+
+        # dict_trips = json.dumps([
+        #         {"From": city[1], "To": city[2], "At": trip_start_time.strftime("%m/%d/%Y, %H:%M:%S")}])
+
+        print("In server")
+        print("state" + str(state))
+        resps = Util.leader_transaction_message(follower_trips, start_time, args['JID'], "cancel", state)
+        failed = [response for response in resps if response[4].status_code != 200]
+
+        print("!!!!!!")
+        print(journey)
+        print(args['UID'])
+        db.addJourney(args['UID'], journey)
+        dictTrips = Util.dictionary_trips(jid, start_time, own_trips)
+        Util.book_transaction(jid, dictTrips, state, db)
+
+        while failed:
+            # send all followers "commit" message
+            resps = Util.leader_transaction_message(follower_trips, start_time, args['JID'], "cancel", state)
+            failed = [response for response in resps if response[4].status_code != 200]
+
+        # COMLETE
+        state = "complete"
+        log["Status"] = state
+        if path.isfile(TransLogFile):
+            with open(TransLogFile, "a") as fp:
+                fp.write(',\n' + json.dumps(log))
+        else:
+            with open(TransLogFile, "w") as fp:
+                fp.write(json.dumps(log))
+        return {'message': "Journey deleted successfully."}, 204
 
 
 class Transaction(Resource):
@@ -290,6 +406,30 @@ class Transaction(Resource):
             print("transaction..........")
             return Util.book_transaction(jid, trips, transaction_status, db)
 
+    def delete(self):
+        global DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, MapUrl, OwnCities, db
+        # todo: change next line to fetch request from real DB
+        mapp = db.get_map()
+        print(mapp)
+
+        DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mapp)
+        parser = reqparse.RequestParser()
+        # Journey ID (string)
+        parser.add_argument('JID', required=True, location=['form', 'json'])
+        # Type: book, cancel (string)
+        parser.add_argument('Type', required=True, location=['form', 'json'])
+        # Status: prepared, commit, abort (string)
+        parser.add_argument('Status', required=True, location=['form', 'json'])
+        # Trips: a list of tuples of (link, timeslot)
+        parser.add_argument('Trips', location=['form', 'json'])
+        args = parser.parse_args()
+
+        jid = args['JID']
+        transaction_type = args['Type']
+        transaction_status = args['Status']
+        trips = json.loads(args['Trips'])
+        if transaction_type == "cancel":
+            return Util.cancel_transaction(jid, trips, transaction_status, db)
 
 api.add_resource(Book, '/book')
 api.add_resource(Map, '/map')

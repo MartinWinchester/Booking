@@ -41,6 +41,10 @@ class DB:
 			{'$push': {'JID': trip["JID"]}, '$set': {'Capacity': trip["Capacity"]}},upsert=True)
 
 
+	def deleteTrip(self, trip):
+		mongo_collection = self.trips_client['Trips']['Trips']
+		mongo_collection.delete_many(trip)
+
 	def deleteJourney(self, uid ,jid):
 		mongo_collection = self.journeys_client['Journey']['Journey']
 		mongo_collection.update_one({'UID': uid}, {'$pull': {'Journeys': {'JID': jid}}})
