@@ -256,7 +256,7 @@ class Util:
             return 2
 
     def cancel_transaction(self, jid, trips, transaction_status, db):
-        mapp = None
+        mapp = db.get_map()
         self.parse_map_cities_servers(mapp)
         if trips is not None:
             for trip in trips:
@@ -273,23 +273,13 @@ class Util:
         log["Trips"] = trips
         log["Status"] = "prepared"
         if transaction_status == "prepared":
+            print("prepared state")
             # todo actually check for timeouts
             timeout_start = time.perf_counter()
             for trip in trips:
                 db.trip_r_acquire(jid)
                 load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
-                # after or: Jid was used before, retry transaction
-                if jid not in db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["JID"]:
-                    db.trip_r_release(jid)
-                    log["Status"] = "abort"
-                    if path.isfile(TransLogFile):
-                        with open(TransLogFile, "a") as fp:
-                            fp.write(',\n' + json.dumps(log))
-                    else:
-                        with open(TransLogFile, "w") as fp:
-                            fp.write(json.dumps(log))
-                    return {'message': 'Retry'}, 400
-                if 0 > self.CapacityMap[self.Cities.inverse[trip["From"]], self.Cities.inverse[trip["To"]]] - load:
+                if 0 >= self.CapacityMap[self.Cities.inverse[trip["From"]], self.Cities.inverse[trip["To"]]] - load:
                     db.trip_r_release(jid)
                     log["Status"] = "abort"
                     if path.isfile(TransLogFile):
@@ -299,7 +289,12 @@ class Util:
                         with open(TransLogFile, "w") as fp:
                             fp.write(json.dumps(log))
                     return {'message': 'capacity cannot be less than zero'}, 400
-            db.trip_w_acquire(jid)
+
+            # print("write lock")
+            # # TODO: check write lock
+            # db.trip_w_acquire(jid)
+            # print("write lock II")
+
             load = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])["Capacity"]
             if 0 >= self.CapacityMap[self.self.inverse[trip["From"]], self.Cities.inverse[trip[1]]] - load:
                 db.trip_w_release(jid)
@@ -322,12 +317,19 @@ class Util:
             return {'message': 'Ok'}, 200
 
         elif transaction_status == "commit":
-            if jid not in db.getTripsByLinkAndTime(trips[0]["From"], trips[0]["To"], trips[0]["At"])["JID"]:
+            print("getTripsByLinkAndTime id = 0")
+            exsitingTrips = db.getTripsByLinkAndTime(trips[0]["From"], trips[0]["To"], trips[0]["At"])
+            print(jid)
+            print(exsitingTrips)
+            if jid in exsitingTrips["JID"]:
+                cou = 0
                 for trip in trips:
+                    print("counter=" + str(cou))
+                    print(trip)
                     trp = db.getTripsByLinkAndTime(trip["From"], trip["To"], trip["At"])
                     trp["Capacity"] = trp["Capacity"] - 1
                     trp["JID"] = trp["JID"].remove(jid)
-                    DB.addTrip(trp)
+                    DB.deleteTrip(trp)
             db.trip_w_release(jid)
             log["Status"] = "complete"
             if path.isfile(TransLogFile):

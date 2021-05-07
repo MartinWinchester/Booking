@@ -429,6 +429,7 @@ class Transaction(Resource):
         transaction_status = args['Status']
         trips = json.loads(args['Trips'])
         if transaction_type == "cancel":
+            print("transaction..........")
             return Util.cancel_transaction(jid, trips, transaction_status, db)
 
 api.add_resource(Book, '/book')
