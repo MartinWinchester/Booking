@@ -244,7 +244,7 @@ class Book(Resource):
                 fp.write(json.dumps(log))
         return {'message': "Journey booked successfully."}, 201
 
-    def delete(self):
+    def cancel(self):
         global DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, MapUrl, OwnCities, db
         # todo task to find update timestamp
         # new_update_time = DB.getMapUpdateTime()
@@ -261,29 +261,29 @@ class Book(Resource):
         mapp = db.get_map()
         print(mapp)
         DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, OwnCities = Util.parse_map_cities_servers(mapp)
-        # hops [(From, To, Duration)]
-        cities = db.getByJourneyID(args['JID'])["cities"]
+        # todo : this is broken i think
+        cities = db.getByJourneyID(args['JID'])
         # [(Url, From, To, Duration)]
-        city_contacts = [(CitiesToServers[city[0]], city[0], city[1], city[2]) for city in cities]
+        city_contacts =  cities["cities"]
         # trips dealt with locally
         own_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] in OwnCities]
         # trips dealt by other servers
         follower_trips = [city_tuple for city_tuple in city_contacts if city_tuple[1] not in OwnCities]
 
-        start_time = datetimeparser.parse(args['At'], fuzzy_with_tokens=True)
-
-        # PREPARED
         state = "prepared"
         journey = dict()
         journey["JID"] = args['JID']
-        journey["Trips"] = city_contacts
-        journey["Cities"] = [city_tuple[0] for city_tuple in cities] + [cities[-1][1]]
+        journey["Trips"] = cities["Trips"]
+        journey["Cities"] = cities["Cities"]
+        journey["StartTime"] = cities["StartTime"]
+        journey["Times"] = cities["Times"]
+
 
         log = dict()
         log["Leader"] = True
         log["JID"] = args['JID']
         log["UID"] = args['UID']
-        log["Type"] = "book"
+        log["Type"] = "cancel"
         log["Trips"] = json.dumps(city_contacts)
         log["Status"] = "prepared"
         log["Followers"] = [city_tuple[0] for city_tuple in cities] + [cities[-1][1]]
@@ -298,7 +298,7 @@ class Book(Resource):
         timeout_start = time.perf_counter()
 
         # send all followers "prepared" message
-        prepared_resps = Util.leader_transaction_message(follower_trips, " ", args['JID'], "cancel", state)
+        prepared_resps = Util.leader_transaction_message(follower_trips, journey["StartTime"][0], args['JID'], "cancel", state)
 
         # so far so good
         failed = [res for res in prepared_resps if res[4].status_code != 200]
@@ -327,7 +327,7 @@ class Book(Resource):
                 failed = [response for response in resps if response[4].status_code != 200 and
                           response[4].text != "capacity cannot be less than zero"]
 
-        dictTrips = Util.dictionary_trips(args['JID'], "", own_trips)
+        dictTrips = Util.dictionary_trips(args['JID'], journey["StartTime"][0], own_trips)
         tmsg, serverRsp = Util.cancel_transaction(args['JID'], dictTrips, state, db)
         print("server prepared state response")
         print(tmsg)
@@ -351,19 +351,19 @@ class Book(Resource):
 
         print("In server")
         print("state" + str(state))
-        resps = Util.leader_transaction_message(follower_trips, start_time, args['JID'], "cancel", state)
+        resps = Util.leader_transaction_message(follower_trips, journey["StartTime"][0], args['JID'], "cancel", state)
         failed = [response for response in resps if response[4].status_code != 200]
 
         print("!!!!!!")
         print(journey)
         print(args['UID'])
         db.addJourney(args['UID'], journey)
-        dictTrips = Util.dictionary_trips(jid, start_time, own_trips)
-        Util.book_transaction(jid, dictTrips, state, db)
+        dictTrips = Util.dictionary_trips(args['JID'], journey["StartTime"][0], own_trips)
+        Util.book_transaction(args['JID'], dictTrips, state, db)
 
         while failed:
             # send all followers "commit" message
-            resps = Util.leader_transaction_message(follower_trips, start_time, args['JID'], "cancel", state)
+            resps = Util.leader_transaction_message(follower_trips, journey["StartTime"][0], args['JID'], "cancel", state)
             failed = [response for response in resps if response[4].status_code != 200]
 
         # COMLETE
@@ -406,7 +406,7 @@ class Transaction(Resource):
             print("transaction..........")
             return Util.book_transaction(jid, trips, transaction_status, db)
 
-    def delete(self):
+    def cancel(self):
         global DistanceMap, CapacityMap, Cities, CitiesToServers, MapLatest, MapUrl, OwnCities, db
         # todo: change next line to fetch request from real DB
         mapp = db.get_map()
